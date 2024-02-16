@@ -1,0 +1,110 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<!--
+	작성자 : 정다정
+	작성일 : 2024.01.16
+	내용 : 진단 대상 DB 관리-스키마
+ -->
+
+<mapper namespace="kr.co.takensoft.dataQuality.data.dao.SchemaDataDAO">
+
+    <!--
+        작성자 : 정다정
+        작성일 : 2024.01.17
+        내용 :  진단 대상 DB 관리 스키마 조회
+     -->
+    <select id="selectSchemaList" parameterType="HashMap" resultType="HashMap">
+        SELECT
+            sd.schema_id
+            , sd.schema_yn
+            , sd.schema_name
+            , sd.schema_explain
+            , dbd.dbms_name
+
+        FROM
+            schema_data sd
+
+        JOIN db_data dbd ON sd.dbms_id = dbd.dbms_id
+
+        WHERE dbd.dbms_id = #{dbms_id}
+
+        ORDER BY sd.schema_id asc
+        OFFSET #{startIndex} LIMIT #{perPage};
+    </select>
+
+    <!--
+        작성자 : 정다정
+        작성일 : 2024.01.17
+        내용 :  진단 대상 DB 관리 스키마 수정
+     -->
+    <update id="updateSchema" parameterType="HashMap">
+        <foreach collection="list" item="item" index="index" separator=";">
+            UPDATE schema_data
+            SET
+            schema_yn = #{item.schema_yn},
+            schema_explain = #{item.schema_explain}
+            WHERE
+            schema_id = #{item.schema_id}
+        </foreach>
+    </update>
+
+
+    <!--
+        작성자 : 정다정
+        작성일 : 2024.01.22
+        내용 : 스키마 목록 COUNT SQL
+    -->
+    <select id="selectSchemaListCount" parameterType="HashMap" resultType="int">
+        SELECT
+            count(*)
+        FROM
+            schema_data
+
+        WHERE dbms_id = #{dbms_id};
+    </select>
+
+    <!--
+        작성자 : 박민혁
+        작성일 : 2024.01.22
+        내용 :  스키마 수집을 위한 스키마 조회
+     -->
+    <select id="selectSchemaListYN" parameterType="HashMap" resultType="HashMap">
+        SELECT
+            sd.schema_id
+            , sd.schema_yn
+            , sd.schema_name
+            , sd.schema_explain
+            , dbd.dbms_name
+
+        FROM
+            schema_data sd
+
+        JOIN db_data dbd ON sd.dbms_id = dbd.dbms_id
+
+        WHERE dbd.dbms_id = #{dbms_id}
+        AND sd.schema_yn = 'y'
+
+        ORDER BY sd.schema_id asc;
+    </select>
+
+    <!--
+        작성자 : 박민혁
+        작성일 : 2024.01.24
+        내용 : 메인 화면용 DBMS의 모든 스키마 목록 COUNT
+    -->
+    <select id="schemaListAllCount" parameterType="HashMap" resultType="int">
+        SELECT
+            COUNT(*)
+        FROM
+            DB_DATA db
+        JOIN schema_data ON db.dbms_id = schema_data.dbms_id
+        WHERE
+            db.user_id = #{user_id}
+            AND
+            db.dbms_connect = '1'
+            AND
+            schema_data.schema_yn = 'y'
+    </select>
+
+</mapper>

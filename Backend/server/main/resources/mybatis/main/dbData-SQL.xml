@@ -1,0 +1,253 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!--
+    작성자 : 박민혁
+    작성일 : 2024.01.17
+    내용 :  DB 연결 및 데이터 조회
+ -->
+<mapper namespace="kr.co.takensoft.dataQuality.data.dao.DbDataDAO">
+
+    <!--
+        작성자 : 박민혁
+        작성일 : 2024.01.17
+        내용 :  DB 데이터 select
+     -->
+    <select id="selectDbList" parameterType="HashMap" resultType="HashMap">
+        SELECT
+            dbms_id,
+            dbms_name,
+            dbms_explain,
+            dbms_type,
+            dbms_version,
+            dbms_url_port,
+            dbms_drive_nm,
+            dbms_connect,
+            dbms_connect_id,
+            dbms_connect_pw,
+            dbms_ag_nm,
+            dbms_system_nm,
+            user_id
+        FROM
+            db_data
+        WHERE
+            user_id = #{user_id}
+        <if test="dbmsType != 'all'">
+            AND dbms_type = #{dbmsType}
+        </if>
+        <if test="searchText != null and searchText != ''">
+            AND dbms_name LIKE '%' || #{searchText} || '%'
+        </if>
+        ORDER BY
+            dbms_id ASC
+        OFFSET #{startIndex} LIMIT #{perPage};
+    </select>
+
+    <!--
+        작성자 : 박민혁
+        작성일 : 2024.01.17
+        내용 :  DB 데이터 insert
+     -->
+    <insert id="insertDbData" parameterType="HashMap">
+        INSERT INTO db_data
+        (
+            dbms_name,
+            dbms_explain,
+            dbms_type,
+            dbms_version,
+            dbms_url_port,
+            dbms_drive_nm,
+            dbms_connect_id,
+            dbms_connect_pw,
+            dbms_ag_nm,
+            dbms_system_nm,
+            user_id
+        )
+        VALUES
+        (
+            #{dbms_name},
+            #{dbms_explain},
+            #{dbms_type},
+            #{dbms_version},
+            #{dbms_url_port},
+            #{dbms_drive_nm},
+            #{dbms_connect_id},
+            #{dbms_connect_pw},
+            #{dbms_ag_nm},
+            #{dbms_system_nm},
+            #{user_id}
+        );
+    </insert>
+
+    <!--
+        작성자 : 박민혁
+        작성일 : 2024.01.18
+        내용 :  DB 데이터 delete
+    -->
+    <delete id="deleteDbData" parameterType="HashMap">
+        DELETE FROM db_data
+        WHERE dbms_id = #{dbms_id}
+    </delete>
+
+    <!--
+        작성자 : 박민혁
+        작성일 : 2024.01.22
+        내용 :  DB 데이터 update
+    -->
+
+    <update id="updateDbData" parameterType="HashMap">
+        UPDATE db_data
+        SET dbms_name = #{dbms_name},
+            dbms_connect = 0,
+            dbms_explain = #{dbms_explain},
+            dbms_type = #{dbms_type},
+            dbms_version = '',
+            dbms_url_port = #{dbms_url_port},
+            dbms_drive_nm = #{dbms_drive_nm},
+            dbms_connect_id = #{dbms_connect_id},
+            dbms_connect_pw = #{dbms_connect_pw},
+            dbms_ag_nm = #{dbms_ag_nm},
+            dbms_system_nm = #{dbms_system_nm}
+        WHERE dbms_id = #{dbms_id}
+    </update>
+
+    <!--
+        작성자 : 박민혁
+        작성일 : 2024.01.18
+        내용 :  DB 접속 성공 시 연결 상태 변경 / 성공 시 dbms_connect가 1로
+     -->
+    <update id="connectDb" parameterType="HashMap">
+        UPDATE db_data
+        SET dbms_connect = #{dbms_connect},
+            dbms_version = #{dbms_version}
+        WHERE dbms_id = #{dbms_id} AND user_id = #{user_id}
+    </update>
+
+    <!--
+        작성자 : 박민혁
+        작성일 : 2024.01.18
+        내용 :  스키마 정보들을 insert함
+     -->
+    <insert id="collectSchema" parameterType="HashMap">
+        INSERT INTO schema_data
+        (
+            schema_name,
+            dbms_id
+        )
+        VALUES
+        (
+            #{schema_name},
+            #{dbms_id}
+        );
+    </insert>
+
+    <!--
+        작성자 : 박민혁
+        작성일 : 2024.01.18
+        내용 :  컬럼 데이터 -> 테이블 데이터 -> 스키마 데이터 delete
+     -->
+    <delete id="deleteSchemaData" parameterType="HashMap">
+        DELETE FROM schema_data
+        WHERE
+            dbms_id = #{dbms_id}
+    </delete>
+
+    <!--
+    작성자 : 박민혁
+    작성일 : 2024.01.19
+    내용 :  테이블 인덱스만 가져오기
+     -->
+    <select id="selectTableIndex" parameterType="HashMap" resultType="HashMap">
+        SELECT
+            table_id
+        FROM
+            table_data
+        WHERE
+            schema_id = #{schema_id}
+        AND
+            table_nm = #{table_nm}
+        ORDER BY schema_id asc;
+    </select>
+
+    <!--
+        작성자 : 박민혁
+        작성일 : 2024.01.19
+        내용 :  테이블 정보들을 insert함
+     -->
+    <insert id="insertTableList" parameterType="HashMap">
+        INSERT INTO table_data
+        (
+            schema_id,
+            table_nm
+        )
+        VALUES
+        (
+            #{schema_id},
+            #{table_nm}
+        );
+    </insert>
+
+    <!--
+        작성자 : 박민혁
+        작성일 : 2024.01.22
+        내용 :  테이블 데이터 -> 스키마 데이터 delete
+     -->
+    <delete id="deleteTableData" parameterType="HashMap">
+        DELETE FROM table_data
+        WHERE schema_id
+        IN (SELECT schema_id FROM schema_data WHERE dbms_id = #{dbms_id})
+    </delete>
+
+    <!--
+        작성자 : 박민혁
+        작성일 : 2024.01.19
+        내용 :  컬럼 정보들을 insert함
+     -->
+    <insert id="insertColumnList" parameterType="HashMap" useGeneratedKeys="true" keyProperty="column_id">
+        INSERT INTO column_data
+        (
+            column_nm,
+            column_type,
+            column_isnull,
+            table_id
+        )
+        VALUES
+        (
+            #{column_nm},
+            #{column_type},
+            #{column_isnull},
+            #{table_id}
+        );
+    </insert>
+
+    <!--
+        작성자 : 박민혁
+        작성일 : 2024.01.19
+        내용 : DB 목록 COUNT SQL
+    -->
+    <select id="selectDbCount" parameterType="HashMap" resultType="int">
+        SELECT
+            COUNT(*)
+        FROM
+            db_data
+        WHERE
+            user_id = #{user_id}
+    </select>
+
+    <!--
+        작성자 : 박민혁
+        작성일 : 2024.01.26
+        내용 :  특정 DB 데이터 select
+     -->
+    <select id="selectDbData" parameterType="HashMap" resultType="HashMap">
+        SELECT
+        dbms_url_port,
+        dbms_drive_nm,
+        dbms_connect_id,
+        dbms_connect_pw
+        FROM
+        db_data
+        WHERE
+        dbms_id = #{dbms_id}
+    </select>
+
+</mapper>

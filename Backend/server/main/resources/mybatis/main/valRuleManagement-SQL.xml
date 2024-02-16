@@ -1,0 +1,152 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<!--valRuleList data로 옮기고 검증룰 테이블 작성 및 axios 통신하기-->
+
+    <!--
+	작성자 : 임재현
+	작성일 : 2024.01.16
+	내용 : 검증룰 관리
+    -->
+<mapper namespace="kr.co.takensoft.dataQuality.rule.dao.ValRuleManagementDAO">
+
+    <!--
+	작성자 : 임재현
+	작성일 : 2024.01.18
+	내용 : 검색조건 추가된 검증룰 테이블 조회
+    -->
+    <select id="selectValRule" parameterType="HashMap" resultType="HashMap">
+        SELECT
+            vr.val_rule_id
+            , vr.val_rule_nm -- 검증룰명
+            , vr.val_rule_type
+            , vr.val_rule_match
+            , vr.val_rule_detail
+            , d.dqi_nm -- 품질지표명
+            , vr.val_rule_explain
+            , vr.user_id
+        FROM
+            val_rule vr
+        JOIN
+            dqi d ON vr.dqi_id = d.dqi_id
+        WHERE
+            (user_id = #{user_id} OR user_id = 'admin')
+        <if test="dqi_nm != '전체' or val_rule_type != '전체' or val_rule_nm != null">
+
+            <if test="dqi_nm != '전체'">
+            AND
+                d.dqi_nm = #{dqi_nm}
+            </if>
+            <if test="val_rule_type != '전체'">
+            AND
+                vr.val_rule_type = #{val_rule_type}
+            </if>
+            <if test="val_rule_nm != null">
+            AND
+                vr.val_rule_nm LIKE CONCAT('%', #{val_rule_nm}, '%')
+            </if>
+        </if>
+        ORDER BY val_rule_id ASC
+        OFFSET #{startIndex} LIMIT #{perPage};
+    </select>
+
+    <select id="dbSelectListCount" parameterType="HashMap" resultType="int">
+        SELECT
+            COUNT(*)
+        FROM
+            val_rule vr
+        JOIN
+            dqi d on vr.dqi_id = d.dqi_id
+        WHERE
+            (user_id = #{user_id} OR user_id = 'admin')
+        <if test="dqi_nm != '전체' or val_rule_type != '전체' or val_rule_nm != null">
+
+            <if test="dqi_nm != '전체'">
+                AND
+                d.dqi_nm = #{dqi_nm}
+            </if>
+            <if test="val_rule_type != '전체'">
+                AND
+                vr.val_rule_type = #{val_rule_type}
+            </if>
+            <if test="val_rule_nm != null">
+                AND
+                vr.val_rule_nm LIKE CONCAT('%', #{val_rule_nm}, '%')
+            </if>
+        </if>
+    </select>
+
+    <!--
+	작성자 : 임재현
+	작성일 : 2024.01.18
+	내용 : 사용자정의 검증룰 추가
+    -->
+    <insert id="insertValRule" parameterType="HashMap">
+        INSERT INTO val_rule
+        (
+              val_rule_nm --검증룰명
+            , dqi_id -- 품질지표명 dqi_nm을 입력 받고 id를 반환함
+            , val_rule_type -- 검증유형
+            , val_rule_match -- 매칭
+            , val_rule_detail --검증룰
+            , val_rule_explain --검증룰설명
+            , user_id
+        )
+        VALUES
+        (
+              #{val_rule_nm}
+            , (SELECT dqi_id from dqi where dqi_nm = #{dqi_nm})
+            , #{val_rule_type}
+            , #{valRuleMatch} -- startIndex와 같이 Service에서 params 반환
+            , #{val_rule_detail}
+            , #{val_rule_explain}
+            , #{user_id}
+        )
+    </insert>
+    <!--
+	작성자 : 임재현
+	작성일 : 2024.01.18
+	내용 : 선택된 검증룰 수정
+    -->
+    <update id="updateValRule" parameterType="HashMap">
+        UPDATE val_rule
+        SET
+            val_rule_id = #{val_rule_id}
+            , val_rule_nm = #{val_rule_nm}
+            , dqi_id = (SELECT dqi_id from dqi where dqi_nm = #{dqi_nm})
+            , val_rule_type = #{val_rule_type}
+            , val_rule_detail = #{val_rule_detail}
+            , val_rule_explain = #{val_rule_explain}
+            , user_id = #{user_id}
+        WHERE val_rule_id = #{val_rule_id}
+    </update>
+    <!--
+	작성자 : 임재현
+	작성일 : 2024.01.18
+	내용 : 검증룰 삭제
+    -->
+    <delete id="deleteValRule" parameterType="int[]">
+        DELETE
+        FROM val_rule
+        WHERE val_rule_id IN
+        <foreach collection="array" item="item" open="(" separator="," close=")">
+            #{item}
+        </foreach>
+    </delete>
+
+    <!--
+	작성자 : 임재현
+	작성일 : 2024.01.17
+	내용 : 검색조건 > 옵션속성 > 검증유형
+    -->
+    <select id="selectDqiType" parameterType="HashMap" resultType="String">
+        SELECT DISTINCT
+            dqi_type
+        FROM
+            dqi
+        WHERE
+            dqi_type !='none'
+    </select>
+
+</mapper>
+

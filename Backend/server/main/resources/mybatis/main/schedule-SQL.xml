@@ -1,0 +1,191 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+
+<!--
+	작성자 : 임재현
+	작성일 : 2024.01.26
+	내용 : 스케줄 실행 결과 조회
+ -->
+<mapper namespace="kr.co.takensoft.dataQuality.schedule.dao.ScheduleDAO">
+    <!--
+    작성자 : 임재현
+    작성일 : 2024.01.26
+    내용 : 검색 조건에 따른 스케줄 테이블 조회
+
+    스케줄명
+    작업상태
+    검색기간
+    조회기간 시작
+    조회기간 끝
+    스케줄시작일시
+    스케줄종료일시
+    스케줄 ID
+    -->
+<!--    <select id="selectScheduleManager" parameterType="HashMap" resultType="HashMap">-->
+<!--        SELECT-->
+<!--        s.schedule_nm,-->
+<!--        t.task_state,-->
+<!--        s.schedule_start_tm,-->
+<!--        s.schedule_end_tm,-->
+<!--        ts.schedule_id-->
+<!--        FROM-->
+<!--            task_schedule ts-->
+<!--        JOIN-->
+<!--            tasks t ON ts.task_id = t.task_id-->
+<!--        JOIN-->
+<!--            schedules s ON ts.schedule_id = s.schedule_id-->
+<!--        JOIN-->
+
+<!--        WHERE ts.manage_rule_id =-->
+<!--        AND s.schedule_nm = #{schedule_nm}-->
+<!--        AND t.task_state = #{task_state}-->
+<!--        AND s.schedule_end_tm - s.schedule_start_tm &lt; #{duration_date}-->
+<!--    </select>-->
+    <!--
+    작성자 : 임재현
+    작성일 : 2024.01.29
+    내용 : 검색 조건에 따른 스케줄 테이블 조회
+    -->
+    <select id="selectScheduleManager" parameterType="HashMap" resultType="HashMap">
+        SELECT
+        s.schedule_id,
+        s.schedule_nm,
+        s.schedule_start_tm,
+        s.schedule_end_tm,
+        COUNT(t.task_id) as total_task,
+        COUNT(CASE WHEN t.task_state = '성공' then 1 end) as success_task
+        FROM
+            schedules s
+        JOIN
+            task_schedule ts ON ts.schedule_id = s.schedule_id
+        JOIN
+            tasks t ON t.task_id = ts.task_id
+        WHERE 1=1
+        <if test="schedule_nm != ''">
+            AND s.schedule_nm = #{schedule_nm}
+        </if>
+        <if test="duration_date != 'all'">
+            <if test="duration_date !='over'">
+                 AND s.schedule_end_tm - s.schedule_start_tm &lt; #{duration_date}::interval
+            </if>
+            <if test="duration_date =='over'">
+                AND s.schedule_end_tm - s.schedule_start_tm &gt; interval '180 days'
+            </if>
+        </if>
+        <if test="search_start_tm != ''">
+            AND s.schedule_start_tm &gt; to_timestamp(#{search_start_tm}, 'YYYY-MM-DD HH24:MI:SS')
+        </if>
+        <if test="search_end_tm !=''">
+            AND s.schedule_end_tm &lt; to_timestamp(#{search_end_tm}, 'YYYY-MM-DD HH24:MI:SS')
+        </if>
+        GROUP BY
+            s.schedule_id, s.schedule_nm, s.schedule_start_tm, s.schedule_end_tm
+        OFFSET #{startIndex} LIMIT #{perPage};
+    </select>
+    <!--
+    작성자 : 임재현
+    작성일 : 2024.01.29
+    내용 : 검색 조건에 따른 스케줄 테이블 COUNT
+    -->
+    <select id="countScheduleManager" parameterType="HashMap" resultType="int">
+        SELECT
+            COUNT (*)
+        FROM
+        schedules s
+        JOIN
+        task_schedule ts ON ts.schedule_id = s.schedule_id
+        JOIN
+        tasks t ON t.task_id = ts.task_id
+        WHERE 1=1
+        <if test="schedule_nm != ''">
+            AND s.schedule_nm = #{schedule_nm}
+        </if>
+        <if test="duration_date != 'all'">
+            <if test="duration_date !='over'">
+                AND s.schedule_end_tm - s.schedule_start_tm &lt; #{duration_date}::interval
+            </if>
+            <if test="duration_date =='over'">
+                AND s.schedule_end_tm - s.schedule_start_tm &gt; interval '180 days'
+            </if>
+        </if>
+        <if test="search_start_tm != ''">
+            AND s.schedule_start_tm &gt; to_timestamp(#{search_start_tm}, 'YYYY-MM-DD HH24:MI:SS')
+        </if>
+        <if test="search_end_tm !=''">
+            AND s.schedule_end_tm &lt; to_timestamp(#{search_end_tm}, 'YYYY-MM-DD HH24:MI:SS')
+        </if>
+    </select>
+
+    <!--
+    작성자 : 임재현
+    작성일 : 2024.01.29
+    내용 : 선택한 스케줄 상세정보 테이블 조회
+
+    스케줄명
+    작업명
+    시작일시
+    종료일시
+    진행시간
+    작업상태
+    에러정보
+    -->
+    <select id="selectScheduleDetail" parameterType="HashMap" resultType="HashMap">
+        SELECT
+            s.schedule_nm,
+            mr.rule_type,
+            t.task_start_tm,
+            t.task_end_tm,
+            EXTRACT(EPOCH FROM (t.task_end_tm - t.task_start_tm)) as duration_time,
+            t.task_state,
+            t.task_err_info
+        FROM
+            task_schedule ts
+        JOIN
+            schedules s ON s.schedule_id = ts.schedule_id
+        JOIN
+            tasks t ON t.task_id = ts.task_id
+        JOIN
+            manage_rule mr ON mr.manage_rule_id = t.manage_rule_id
+        WHERE
+            ts.schedule_id = #{schedule_id}
+        OFFSET #{startIndex} LIMIT #{perPage};
+    </select>
+
+    <!--
+    작성자 : 임재현
+    작성일 : 2024.01.30
+    내용 : 선택한 스케줄 상세정보 테이블 COUNT
+    -->
+    <select id="countScheduleDetail" parameterType="HashMap" resultType="int">
+        SELECT
+            COUNT (*)
+        FROM
+            task_schedule ts
+        JOIN
+            schedules s ON s.schedule_id = ts.schedule_id
+        JOIN
+            tasks t ON t.task_id = ts.task_id
+        WHERE
+            ts.schedule_id = #{schedule_id}
+    </select>
+
+
+    <!--
+	작성자 : 임재현
+	작성일 : 2024.01.30
+	내용 : 결과삭제
+    -->
+    <delete id="deleteSchedule" parameterType="int[]">
+        DELETE
+        FROM schedules s
+        JOIN
+            task_schedule ts ON ts.schedule_id = s.schedule_id
+        JOIN
+            tasks t ON t.task_id = ts.task_id
+        WHERE s IN
+        <foreach collection="array" item="item" open="(" separator="," close=")">
+            #{item}
+        </foreach>
+    </delete>
+</mapper>

@@ -1,0 +1,195 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!--
+	작성자 : 김준식
+	작성일 : 2024.01.23
+	내용 : 업무 규치 관리 SQL
+    -->
+<mapper namespace="kr.co.takensoft.dataQuality.rule.dao.WorkRuleManagementDAO">
+
+    <!--
+	작성자 : 김준식
+	작성일 : 2024.01.23
+	내용 : 업무 규칙 관리에 필요한 DBMS명을 불러옴
+    -->
+    <select id="dbmsList" parameterType="HashMap" resultType="HashMap">
+        SELECT DISTINCT dbms_name, dbms_id
+        FROM db_data
+        WHERE user_id = #{user_id} AND dbms_connect = '1'
+    </select>
+
+    <!--
+	작성자 : 김준식
+	작성일 : 2024.01.24
+	내용 : 업무 규칙 관리에 필요한 스키마명을 불러옴
+    -->
+    <select id="schemaList" parameterType="HashMap" resultType="HashMap">
+        SELECT DISTINCT sd.schema_name as schema_name, sd.schema_id as schema_id
+        FROM schema_data sd
+        WHERE sd.dbms_id = #{dbms_id} AND sd.schema_yn = 'y'
+    </select>
+
+    <!--
+	작성자 : 김준식
+	작성일 : 2024.01.24
+	내용 : 업무 규칙 관리에 필요한 테이블명을 불러옴
+    -->
+    <select id="tableList" parameterType="HashMap" resultType="HashMap">
+        SELECT DISTINCT table_nm, table_id
+        FROM table_data
+        WHERE schema_id = #{schema_id} AND table_yn = 'y'
+    </select>
+
+    <!--
+	작성자 : 김준식
+	작성일 : 2024.01.24
+	내용 : 업무 규칙 관리에 필요한 컬럼명을 불러옴
+    -->
+    <select id="columnList" parameterType="HashMap" resultType="HashMap">
+        SELECT DISTINCT column_nm, column_id
+        FROM column_data
+        WHERE table_id = #{table_id}
+    </select>
+
+    <!--
+	작성자 : 김준식
+	작성일 : 2024.01.24
+	내용 : 업무 규칙 관리에 저장된 모든 데이터 항목을 불러옴
+    -->
+    <select id="workRuleList" parameterType="HashMap" resultType="HashMap">
+        SELECT
+            dd.dbms_name as dbms_name,
+            dd.dbms_id as dbms_id,
+            sd.schema_name as schema_name,
+            sd.schema_id as schema_id,
+            td.table_nm as table_name,
+            td.table_id as table_id,
+            cd.column_nm as column_name,
+            cd.column_id as column_id,
+            wr.work_rule_id as work_rule_id,
+            wr.work_rule_nm as work_rule_name,
+            wr.work_rule_expalin as work_rule_explain,
+            wr.work_rule_cnt as work_rule_cnt,
+            wr.work_rule_sql as work_rule_sql,
+            dqi.dqi_nm as dqi_name
+        FROM db_data dd
+        JOIN schema_data sd ON dd.dbms_id = sd.dbms_id
+        JOIN table_data td ON sd.schema_id = td.schema_id
+        JOIN column_data cd ON td.table_id = cd.table_id
+        JOIN work_rule wr ON cd.column_id = wr.column_id
+        JOIN dqi ON dqi.dqi_id = wr.dqi_id
+        WHERE dd.user_id = #{user_id}
+        AND dd.dbms_connect = '1'
+        AND sd.schema_yn = 'y'
+        <choose>
+            <!-- 진단대상 DBMS와 스키마명을 선택하였을 때 -->
+            <when test="dbms_id != null and schema_id != null">
+                AND dd.dbms_id = #{dbms_id} AND sd.schema_id = #{schema_id}
+            </when>
+            <!-- 진단대상 DBMS만 선택하였을 때 -->
+            <when test="dbms_id != null and schema_id == null">
+                AND dd.dbms_id = #{dbms_id}
+            </when>
+        </choose>
+        ORDER BY wr.work_rule_id DESC
+        LIMIT #{perPage} OFFSET #{startIdx};
+    </select>
+
+    <!--
+	작성자 : 김준식
+	작성일 : 2024.01.24
+	내용 : 업무 규칙 관리 등록
+    -->
+    <insert id="insertWorkRule" parameterType="HashMap">
+        INSERT INTO work_rule
+        (
+            work_rule_nm,
+            work_rule_expalin,
+            work_rule_cnt,
+            work_rule_sql,
+            column_id,
+            dqi_id
+        )
+        VALUES
+        (
+            #{work_rule_nm},
+            #{work_rule_explain},
+            #{work_rule_cnt},
+            #{work_rule_sql},
+            #{column_id},
+            (select dqi_id from dqi where dqi_nm = #{dqi_nm})
+        )
+    </insert>
+
+    <!--
+	작성자 : 김준식
+	작성일 : 2024.01.24
+	내용 : 업무 규칙 관리 수정
+    -->
+    <update id="updateWorkRule" parameterType="HashMap">
+        UPDATE work_rule
+        SET
+            work_rule_nm = #{work_rule_nm},
+            work_rule_expalin = #{work_rule_explain},
+            work_rule_cnt = #{work_rule_cnt},
+            work_rule_sql = #{work_rule_sql},
+            column_id = #{column_id},
+            dqi_id = (select dqi_id from dqi where dqi_nm = #{dqi_nm})
+        WHERE work_rule_id = #{work_rule_id}
+    </update>
+
+    <!--
+	작성자 : 김준식
+	작성일 : 2024.01.24
+	내용 : 업무 규칙 관리 삭제
+    -->
+    <delete id="deleteWorkRule" parameterType="HashMap">
+        DELETE FROM work_rule
+        WHERE work_rule_id IN
+        <foreach collection="params" item="index" open="(" separator="," close=")">
+            #{index}
+        </foreach>
+    </delete>
+
+    <!--
+	작성자 : 김준식
+	작성일 : 2024.01.24
+	내용 : 검색조건에 따른 업무규칙 데이터의 총 개수
+    -->
+    <select id="wrListCount" parameterType="HashMap" resultType="int">
+        SELECT COUNT (*)
+        FROM db_data dd
+        JOIN schema_data sd ON dd.dbms_id = sd.dbms_id
+        JOIN table_data td ON sd.schema_id = td.schema_id
+        JOIN column_data cd ON td.table_id = cd.table_id
+        JOIN work_rule wr ON cd.column_id = wr.column_id
+        JOIN dqi ON dqi.dqi_id = wr.dqi_id
+        WHERE dd.user_id = #{user_id} AND dd.dbms_connect = '1'
+        AND sd.schema_yn = 'y'
+        <choose>
+            <!-- 진단대상 DBMS와 스키마명을 선택하였을 때 -->
+            <when test="dbms_id != null and schema_id != null">
+                AND dd.dbms_id = #{dbms_id} AND sd.schema_id = #{schema_id}
+            </when>
+            <!-- 진단대상 DBMS만 선택하였을 때 -->
+            <when test="dbms_id != null and schema_id == null">
+                AND dd.dbms_id = #{dbms_id}
+            </when>
+        </choose>
+    </select>
+
+    <!--
+    작성자 : 박민혁
+    작성일 : 2024.02.06
+    내용 : 업무 규칙 id 가져오기
+    -->
+    <select id="selectWorkRuleId" parameterType="HashMap" resultType="HashMap">
+        SELECT
+            work_rule_id
+        FROM work_rule
+        WHERE column_id = #{column_id}
+        ORDER BY work_rule_id DESC
+        LIMIT 1;
+    </select>
+
+</mapper>

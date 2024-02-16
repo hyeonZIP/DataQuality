@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!--
+    작성자 : 박민혁
+    작성일 : 2024.02.06
+    내용 :  총합 규칙 결과 관리
+ -->
+<mapper namespace="kr.co.takensoft.dataQuality.result.dao.ManageResultDAO">
+    <!--
+        작성자 : 박민혁
+        작성일 : 2024.02.06
+        내용 :  총합 규칙 결과 정보 select
+     -->
+    <select id="selectManageResult" parameterType="HashMap" resultType="HashMap">
+        SELECT
+            result_id,
+            error_nm,
+            error_cnt,
+            result_cnt
+        FROM manage_result
+        WHERE manage_rule_id = #{manage_rule_id}
+    </select>
+    <!--
+        작성자 : 박민혁
+        작성일 : 2024.02.06
+        내용 :  총합 규칙 결과 정보 insert
+     -->
+    <insert id="insertManageResult" parameterType="HashMap">
+        INSERT INTO manage_result
+        (
+            error_nm,
+            error_cnt,
+            result_cnt,
+            manage_rule_id
+        )
+        VALUES
+        (
+            #{error_nm},
+            #{error_cnt},
+            #{result_cnt},
+            #{manage_rule_id}
+        )
+    </insert>
+
+    <!--
+    작성자 : 박민혁
+    작성일 : 2024.02.07
+    내용 :  총합 규칙 결과 정보 delete
+ -->
+    <delete id="deleteManageResult" parameterType="HashMap">
+        DELETE FROM manage_result
+        WHERE
+            manage_rule_id = #{manage_rule_id}
+    </delete>
+
+</mapper>

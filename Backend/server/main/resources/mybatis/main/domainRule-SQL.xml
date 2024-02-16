@@ -1,0 +1,123 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!--
+    작성자 : 박민혁
+    작성일 : 2024.01.23
+    내용 :  도메인 규칙 관리
+ -->
+<mapper namespace="kr.co.takensoft.dataQuality.rule.dao.DomainRuleManagementDAO">
+    <!--
+        작성자 : 박민혁
+        작성일 : 2024.01.23
+        내용 :  도메인 규칙 관리 select
+     -->
+    <select id="selectDomainRule" parameterType="HashMap" resultType="HashMap">
+        SELECT
+            rule_id,
+            code_rule.code_id as code_id,
+            val_rule.val_rule_id as val_rule_id,
+            column_data.column_id as column_id,
+            db.dbms_name as dbms_name,
+            schema_data.schema_name as schema_nm,
+            table_data.table_nm as table_nm,
+            column_data.column_nm as column_nm,
+            column_data.column_type AS column_type,
+            val_rule.val_rule_nm AS val_rule_nm,
+            code_rule.code_nm AS code_nm
+        FROM
+            DB_DATA db
+        JOIN schema_data ON db.dbms_id = schema_data.dbms_id
+        JOIN table_data ON schema_data.schema_id = table_data.schema_id
+        JOIN column_data ON table_data.table_id = column_data.table_id
+        LEFT JOIN domain_rule ON column_data.column_id = domain_rule.column_id
+        LEFT JOIN val_rule ON domain_rule.val_rule_id = val_rule.val_rule_id
+        LEFT JOIN code_rule ON domain_rule.code_id = code_rule.code_id
+        WHERE
+            db.user_id = #{user_id}
+            AND
+            db.dbms_connect = '1'
+            AND
+            schema_data.schema_yn = 'y'
+            AND
+            table_data.table_yn = 'y'
+        <if test="dbms_name != null and dbms_name != ''">
+            AND db.dbms_name = #{dbms_name}
+        </if>
+        <if test="schema_name != null and schema_name != ''">
+            AND schema_data.schema_name = #{schema_name}
+        </if>
+        <if test="table_nm != null">
+            AND table_data.table_nm LIKE CONCAT('%', #{table_nm}, '%')
+        </if>
+        <if test="column_nm != null">
+            AND column_data.column_nm LIKE CONCAT('%', #{column_nm}, '%')
+        </if>
+        ORDER BY rule_id DESC
+        OFFSET #{startIndex} LIMIT #{perPage};
+   </select>
+    <!--
+        작성자 : 박민혁
+        작성일 : 2024.01.23
+        내용 :  도메인 규칙 관리 count select
+     -->
+    <select id="selectDomainRuleCount" parameterType="HashMap" resultType="int">
+        SELECT
+            count(*)
+        FROM
+            DB_DATA db
+        JOIN schema_data ON db.dbms_id = schema_data.dbms_id
+        JOIN table_data ON schema_data.schema_id = table_data.schema_id
+        JOIN column_data ON table_data.table_id = column_data.table_id
+        LEFT JOIN domain_rule ON column_data.column_id = domain_rule.column_id
+        LEFT JOIN val_rule ON domain_rule.val_rule_id = val_rule.val_rule_id
+        LEFT JOIN code_rule ON domain_rule.code_id = code_rule.code_id
+        WHERE
+            db.user_id = #{user_id}
+            AND
+            db.dbms_connect = '1'
+            AND
+            schema_data.schema_yn = 'y'
+            AND
+            table_data.table_yn = 'y'
+        <if test="dbms_name != null and dbms_name != ''">
+            AND db.dbms_name = #{dbms_name}
+        </if>
+        <if test="schema_name != null and schema_name != ''">
+            AND schema_data.schema_name = #{schema_name}
+        </if>
+        <if test="table_nm != null">
+            AND table_data.table_nm LIKE CONCAT('%', #{table_nm}, '%')
+        </if>
+        <if test="column_nm != null">
+            AND column_data.column_nm LIKE CONCAT('%', #{column_nm}, '%')
+        </if>
+    </select>
+    <!--
+        작성자 : 박민혁
+        작성일 : 2024.01.23
+        내용 :  도메인 규칙 관리 insert
+     -->
+    <insert id="insertDomainRule" parameterType="HashMap">
+        INSERT INTO domain_rule
+        (
+            column_id
+        )
+        VALUES
+        (
+            #{column_id}
+        );
+    </insert>
+    <!--
+        작성자 : 박민혁
+        작성일 : 2024.01.23
+        내용 :  도메인 규칙 관리 update
+     -->
+    <update id="updateDomainRule" parameterType="HashMap">
+        UPDATE domain_rule
+        SET
+            code_id = #{code_id},
+            val_rule_id = #{val_rule_id}
+        WHERE
+            column_id = #{column_id}
+    </update>
+</mapper>

@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+
+<!--
+	작성자 : 박민혁
+	작성일 : 2024.01.16
+	내용 : 유저 정보 입니다.
+ -->
+<mapper namespace="kr.co.takensoft.dataQuality.user.dao.UserDAO">
+
+    <!--
+        작성자 : 박민혁
+        작성일 : 2024.01.16
+        내용 :  users 데이터 조회
+     -->
+    <select id="selectUsers" parameterType="HashMap" resultType="HashMap">
+        SELECT
+              user_id
+            , user_pw
+            , user_nm
+            , user_email
+	    FROM
+	        users
+    </select>
+
+    <!--
+        작성자 : 박민혁
+        작성일 : 2024.01.16
+        내용 : users 데이터 등록
+     -->
+    <insert id="insertUsers" parameterType="HashMap">
+        INSERT INTO users
+        (
+              user_id
+            , user_pw
+            , user_nm
+            , user_email
+        )
+        VALUES
+        (
+              #{user_id}
+            , #{user_pw}
+            , #{user_nm}
+            , #{user_email}
+        )
+    </insert>
+
+    <!--
+        작성자 : 김준식
+        작성일 : 2024.01.16
+        내용 : 로그인 아이디 존재 확인
+     -->
+    <select id="idCheck" parameterType="HashMap" resultType="int">
+        SELECT COUNT(*)
+        FROM users
+        WHERE user_id = #{user_id}
+    </select>
+
+    <!--
+        작성자 : 김준식
+        작성일 : 2024.01.16
+        내용 : 사용자 ID의 비밀번호 가져오기
+     -->
+    <select id="getPassword" parameterType="HashMap" resultType="String">
+        SELECT user_pw
+        FROM users
+        WHERE user_id = #{user_id}
+    </select>
+
+    <!--
+        작성자 : 김준식
+        작성일 : 2024.01.17
+        내용 : 사용자 이름 가져오기
+     -->
+    <select id="getUserName" parameterType="HashMap" resultType="String">
+        SELECT user_nm
+        FROM users
+        WHERE user_id = #{user_id}
+    </select>
+
+    <!--
+        작성자 : 정다정
+        작성일 : 2024.01.22
+        내용 : 사용자 비밀번호 변경
+     -->
+    <update id="updateUserPw" parameterType="HashMap">
+        UPDATE
+            users
+        SET
+            user_pw = #{update_pw}
+        WHERE
+            user_id = #{user_id}
+    </update>
+
+    <!--
+        작성자 : 정다정
+        작성일 : 2024.02.01
+        내용 : 사용자 이메일 가져 오기
+      -->
+    <select id="getUserEmail" parameterType="HashMap" resultType="String">
+        SELECT
+            user_email
+        FROM
+            users
+        WHERE
+            user_id = #{user_id}
+    </select>
+</mapper>

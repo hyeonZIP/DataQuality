@@ -1,0 +1,264 @@
+set search_path to dq;
+
+DROP TABLE IF EXISTS DQI, USERS, DB_DATA, SCHEMA_DATA, TABLE_DATA, COLUMN_DATA, VAL_RULE, CODE_RULE, DOMAIN_RULE, DUPL_RULE, WORK_RULE, REF_RULE, MANAGE_RULE, MANAGE_RESULT, SCHEDULES, TASKS, TASK_SCHEDULE;
+
+CREATE TABLE DQI
+(
+	DQI_ID               SERIAL PRIMARY KEY ,
+	DQI_NM_HIGH          CHARACTER VARYING(50) NULL ,
+	DQI_NM               CHARACTER VARYING(50) NULL ,
+	DQI_TYPE             CHARACTER VARYING(50) NULL ,
+	DQI_EXPLAIN          CHARACTER VARYING(250) NULL 
+);
+
+CREATE TABLE USERS
+(
+	USER_ID              CHARACTER VARYING(50) PRIMARY KEY,
+	USER_PW              CHARACTER VARYING(300) NULL ,
+	USER_NM              CHARACTER VARYING(50) NULL ,
+	USER_EMAIL           CHARACTER VARYING(50) NULL 
+);
+
+
+CREATE TABLE DB_DATA
+(
+	DBMS_ID              SERIAL PRIMARY KEY ,
+	DBMS_NAME            CHARACTER VARYING(25) NULL ,
+	DBMS_EXPLAIN         CHARACTER VARYING(250) NULL ,
+	DBMS_TYPE            CHARACTER VARYING(50) NULL ,
+	DBMS_VERSION         CHARACTER VARYING(20) NULL ,
+	DBMS_URL_PORT        CHARACTER VARYING(50) NULL ,
+	DBMS_DRIVE_NM        CHARACTER VARYING(50) NULL ,
+	DBMS_CONNECT 	     CHARACTER VARYING(1) DEFAULT '0' ,
+	DBMS_CONNECT_ID      CHARACTER VARYING(25) NULL ,
+	DBMS_CONNECT_PW      CHARACTER VARYING(250) NULL ,
+	DBMS_AG_NM           CHARACTER VARYING(50) NULL ,
+	DBMS_SYSTEM_NM       CHARACTER VARYING(50) NULL ,
+	USER_ID              CHARACTER VARYING(50) REFERENCES USERS(USER_ID) ON DELETE CASCADE
+);
+
+CREATE TABLE SCHEMA_DATA
+(
+	SCHEMA_ID            SERIAL PRIMARY KEY,
+	SCHEMA_STATE         CHARACTER VARYING(20) NULL ,
+	SCHEMA_NAME          CHARACTER VARYING(100) NULL ,
+	SCHEMA_EXPLAIN       CHARACTER VARYING(250) NULL ,
+	SCHEMA_YN            CHARACTER VARYING(1) DEFAULT 'y',
+	DBMS_ID              INTEGER REFERENCES DB_DATA(DBMS_ID) ON DELETE CASCADE
+);
+
+
+
+CREATE TABLE TABLE_DATA
+(
+	TABLE_ID             SERIAL PRIMARY KEY,
+	TABLE_YN             CHARACTER VARYING(1) DEFAULT 'y' ,
+	TABLE_NM             CHARACTER VARYING(100) NULL ,
+	TABLE_NM_K           CHARACTER VARYING(25) NULL ,
+	TABLE_EXPLAIN        CHARACTER VARYING(250) NULL ,
+	SCHEMA_ID            INTEGER REFERENCES SCHEMA_DATA(SCHEMA_ID) ON DELETE CASCADE
+);
+
+
+CREATE TABLE COLUMN_DATA
+(
+	COLUMN_ID            SERIAL PRIMARY KEY ,
+	COLUMN_NM            CHARACTER VARYING(100) NULL ,
+	COLUMN_NM_K          CHARACTER VARYING(100) NULL ,
+	COLUMN_TYPE          CHARACTER VARYING(50) NULL ,
+	COLUMN_ISNULL        CHARACTER VARYING(5) NULL ,
+	TABLE_ID             INTEGER REFERENCES TABLE_DATA(TABLE_ID)  ON DELETE CASCADE
+);
+
+CREATE TABLE COLUMN_ANALYZE
+(
+	COLUMN_ANL_ID        SERIAL PRIMARY KEY ,
+	COLUMN_ANL_VALUE     CHARACTER VARYING NULL ,
+	COLUMN_ANL_COUNT     INTEGER,
+	COLUMN_ID            INTEGER REFERENCES COLUMN_DATA(COLUMN_ID)  ON DELETE CASCADE
+);
+
+CREATE TABLE VAL_RULE
+(
+	VAL_RULE_ID          SERIAL PRIMARY KEY,
+	VAL_RULE_NM          CHARACTER VARYING(50) NULL ,
+	VAL_RULE_TYPE        CHARACTER VARYING(25) NULL ,
+	VAL_RULE_MATCH       CHARACTER VARYING(25) NULL ,
+	VAL_RULE_DETAIL      CHARACTER VARYING NULL ,
+	VAL_RULE_EXPLAIN     CHARACTER VARYING NULL ,
+	DQI_ID               INTEGER REFERENCES DQI(DQI_ID) ,
+	USER_ID              CHARACTER VARYING(50) REFERENCES USERS(USER_ID)  ON DELETE CASCADE
+);
+
+
+CREATE TABLE CODE_RULE
+(
+	CODE_ID              SERIAL PRIMARY KEY ,
+	CODE_TYPE            CHARACTER VARYING(50) NULL ,
+	CODE_NM              CHARACTER VARYING(50) NULL ,
+	CODE_SQL             CHARACTER VARYING NULL ,
+	CODE_EXPLAIN         CHARACTER VARYING NULL ,
+	DQI_ID               INTEGER REFERENCES DQI(DQI_ID),
+	DBMS_ID              INTEGER REFERENCES DB_DATA(DBMS_ID) ON DELETE CASCADE
+);
+
+
+CREATE TABLE DOMAIN_RULE
+(
+	RULE_ID              SERIAL PRIMARY KEY ,
+    CODE_ID              INTEGER REFERENCES CODE_RULE(CODE_ID) ON DELETE CASCADE,
+    VAL_RULE_ID          INTEGER REFERENCES VAL_RULE(VAL_RULE_ID) ON DELETE CASCADE, 
+	COLUMN_ID            INTEGER REFERENCES COLUMN_DATA(COLUMN_ID) ON DELETE CASCADE
+);
+
+CREATE TABLE DUPL_RULE
+(
+	DUPL_RULE_ID         SERIAL PRIMARY KEY ,
+	DQI_ID               INTEGER REFERENCES DQI(DQI_ID) ,
+	COLUMN_ID_LIST       CHARACTER VARYING NULL ,
+	COLUMN_ID            INTEGER REFERENCES COLUMN_DATA(COLUMN_ID) ON DELETE CASCADE
+);
+
+
+CREATE TABLE WORK_RULE
+(
+	WORK_RULE_ID         SERIAL PRIMARY KEY,
+	WORK_RULE_NM         CHARACTER VARYING(25) NULL ,
+	WORK_RULE_EXPALIN    CHARACTER VARYING NULL ,
+	WORK_RULE_CNT        CHARACTER VARYING NULL ,
+	WORK_RULE_SQL        CHARACTER VARYING NULL ,
+	DQI_ID               INTEGER REFERENCES DQI(DQI_ID),
+	COLUMN_ID            INTEGER REFERENCES COLUMN_DATA(COLUMN_ID) ON DELETE CASCADE
+);
+
+CREATE TABLE REF_RULE
+(
+	REF_RULE_ID          SERIAL PRIMARY KEY ,
+	DQI_ID               INTEGER REFERENCES DQI(DQI_ID) ,
+	CHILD_COL_ID         INTEGER REFERENCES COLUMN_DATA(COLUMN_ID) ON DELETE CASCADE,
+	PARENT_COL_ID        INTEGER REFERENCES COLUMN_DATA(COLUMN_ID) ON DELETE CASCADE
+);
+
+CREATE TABLE MANAGE_RULE
+(
+	MANAGE_RULE_ID       SERIAL PRIMARY KEY ,
+	RULE_ID              INTEGER ,
+	RULE_TYPE            CHARACTER VARYING(25) NULL ,
+	USER_ID              CHARACTER VARYING(50) REFERENCES USERS(USER_ID) ON DELETE CASCADE
+);
+
+
+CREATE TABLE MANAGE_RESULT
+(
+	RESULT_ID            SERIAL PRIMARY KEY ,
+	RESULT_CNT           INTEGER,
+	ERROR_CNT            INTEGER,
+	ERROR_NM             CHARACTER VARYING NULL,
+	MANAGE_RULE_ID       INTEGER REFERENCES MANAGE_RULE(MANAGE_RULE_ID) ON DELETE CASCADE, 
+);
+
+
+
+CREATE TABLE SCHEDULES
+(
+	SCHEDULE_ID          SERIAL PRIMARY KEY,
+	SCHEDULE_NM          CHARACTER VARYING(50) NULL ,
+	SCHEDULE_START_TM    TIMESTAMP NULL ,
+	SCHEDULE_END_TM      TIMESTAMP NULL ,
+	SCHEDULE_EXPLAIN     CHARACTER VARYING(250) NULL 
+);
+
+CREATE TABLE TASKS
+(
+	TASK_ID              SERIAL PRIMARY KEY,
+	TASK_START_TM        TIMESTAMP NULL ,
+	TASK_END_TM          TIMESTAMP NULL ,
+	TASK_STATE           CHARACTER VARYING(25) NULL ,
+	TASK_ERR_INFO        CHARACTER VARYING(250) NULL ,
+	MANAGE_RULE_ID       INTEGER REFERENCES MANAGE_RULE(MANAGE_RULE_ID) ON DELETE CASCADE
+);
+
+
+
+CREATE TABLE TASK_SCHEDULE
+(
+	SCHEDULE_ID          INTEGER REFERENCES SCHEDULES(SCHEDULE_ID) ON DELETE CASCADE,
+	TASK_ID              INTEGER REFERENCES TASKS(TASK_ID) ON DELETE CASCADE,
+    PRIMARY KEY (SCHEDULE_ID, TASK_ID)
+);
+
+
+INSERT INTO DQI (DQI_NM_HIGH, DQI_NM, DQI_TYPE, DQI_EXPLAIN)
+VALUES ('정합성진단', '시간순서 일관성', 'none', '시간순서 관계를 갖는 컬럼 간의 데이터 오류 측정'),
+       ('정합성진단', '선후관계 정확성', 'none', '선후관계를 가지는 컬럼 간의 데이터 오류 측정'),
+       ('정합성진단', '논리관계 일관성', 'none', '컬럼 간 논리적 일관성 오류를 측정'),
+       ('정합성진단', '계산식', 'none', '계산값이 정확하게 관리되고 있는지 측정'),
+       ('정합성진단', '참조관계', 'none', '참조하는 컬럼과 참조되는 컬럼 사이의 일관성을 유지해야 함'),
+       ('완결성진단', '글자깨짐', '형식', '컬럼명, 데이터 값에 깨진 글자 또는 완성된 한글이 아닌 데이터 오류 측정'),
+       ('완결성진단', '공백, 특수문자', '형식', '공백이나 특수문자가 포함'),
+       ('완결성진단', '필수값', '필수값', '데이터의 특성 상 반드시 입력되어야 하는 값은 누락 없이 제공되어야 함'),
+       ('완결성진단', '중복데이터', 'none', '내 두 개 이상 테이블(또는 파일)에 존재하는 동일한(중복) 데이터의 값 일치 여부 측정'),
+       ('유효성진단', '날짜 도메인', '날짜', '날짜 데이터값이 유효한 범위를 벗어나거나 형식이 표준을 위배한 데이터 오류 측정'),
+       ('유효성진단', '번호 도메인', '번호', '번호생성 규칙을 위배한 경우 오류 측정'),
+       ('유효성진단', '여부 도메인', '여부', '컬럼의 저장된 값이 유효한(2개의 값)의 범위를 벗어나는 데이터 오류 측정'),
+       ('유효성진단', '코드 도메인', '코드', '표준으로 정의한 코드값이 일관되게 적용하고 있지 못한 코드 컬럼의 데이터 오류 측정'),
+       ('유효성진단', '금액 도메인', '범위', '금액 데이터 이외 문자가 입력되어있는 컬럼의 데이터 오류 측정'),
+       ('유효성진단', '수량 도메인', '범위', '수량 데이터 이외의 문자가 입력되어있는 컬럼의 데이터 오류 측정'),
+       ('유효성진단', '율 도메인', '범위', '율 데이터 이외의 문자가 입력되어있는 컬럼의 데이터 오류 측정');
+
+
+INSERT INTO VAL_RULE (VAL_RULE_NM, VAL_RULE_TYPE, VAL_RULE_MATCH,VAL_RULE_DETAIL,VAL_RULE_EXPLAIN,DQI_ID, USER_ID)
+VALUES ('[기본]날짜-YYYY-MM-DD HH24:MI:SS','날짜','매치','YYYY-MM-DD HH24:MI:SS','기본 검증룰', 10, 'admin'),
+	   ('[기본]날짜-YYYY-MM-DD HH24:MI','날짜','매치','YYYY-MM-DD HH24:MI','기본 검증룰',10, 'admin'),
+	   ('[기본]날짜-YYYY/MM/DD','날짜','매치','YYYY/MM/DD','기본검증룰',10, 'admin'),
+	   ('[기본]날짜-YYYY/MM/DD HH24:MI:SS','날짜','매치','YYYY/MM/DD HH24:MI:SS','기본검증룰',10, 'admin'),
+	   ('[기본]날짜-YYYY/MM/DD HH:MI','날짜','매치','YYYY/MM/DD HH24:MI','기본 검증룰',10, 'admin'),
+	   ('[기본]날짜-YYYYMMDDHH24','날짜','매치','YYYYMMDDHH24','기본검증룰',10, 'admin'),
+	   ('[기본]날짜-YYYYMMDDHH24MI','날짜','매치','YYYYMMDDHH24MI','기본검증룰',10, 'admin'),
+	   ('[기본]날짜-년도','날짜','매치','YYYY','기본검증룰',10, 'admin'),
+	   ('[기본]날짜-년월','날짜','매치','YYYYMM','기본검증룰',10, 'admin'),
+	   ('[기본]날짜-년월(-)','날짜','매치','YYYY-MM','기본검증룰',10, 'admin'),
+	   ('[기본]날짜-년월일','날짜','매치','YYYYMMDD','기본검증룰',10, 'admin'),
+	   ('[기본]날짜-년월일(-)','날짜','매치','YYYY-MM-DD','기본검증룰',10, 'admin'),
+	   ('[기본]날짜-년월일(YYMMDD)','날짜','매치','YYMMDD','기본검증룰',10, 'admin'),
+	   ('[기본]날짜-년월일시분초',	'날짜',	'매치',	'YYYYMMDDHH24MISS',	'기본검증룰',10, 'admin'),
+	   ('[기본]날짜-분',	'날짜',	'매치',	'MI',	'기본검증룰',10, 'admin'),
+	   ('[기본]날짜-시',	'날짜',	'매치',	'HH24',	'기본검증룰',10, 'admin'),
+	   ('[기본]날짜-시분',	'날짜',	'매치',	'HH24:MI',	'기본검증룰',10, 'admin'),
+	   ('[기본]날짜-시분(:미포함)',	'날짜',	'매치',	'HH24MI',	'기본검증룰',10, 'admin'),
+	   ('[기본]날짜-시분초',	'날짜',	'매치',	'HH24MISS',	'기본검증룰',10, 'admin'),
+	   ('[기본]번호-법인등록번호',	'형식',	'매치',	'^([0-9]{2}(0[1-9]|1[0-2])(?:0[1-9]|[1,2][0-9]|3[0,1]))[1-4][0-9]{6}$',	'기본검증룰',11, 'admin'),
+	   ('[기본]번호-사내전화번호',	'형식',	'매치',	'^[0-9]{4}$',	'기본검증룰',11, 'admin'),
+	   ('[기본]번호-사업자번호',	'형식',	'매치',	'^[0-9]{10}$',	'기본검증룰',11, 'admin'),
+	   ('[기본]번호-사업자번호(-)',	'형식',	'매치',	'^[0-9]{3}-[0-9]{2}-[0-9]{5}$',	'기본검증룰',11, 'admin'),
+	   ('[기본]번호-우편번호(구)',	'형식',	'매치',	'^[0-9]{3}-?[0-9]{3}$',	'기본검증룰',11, 'admin'),
+	   ('[기본]번호-우편번호(신)',	'형식',	'매치',	'^[0-9]{5}$',	'기본검증룰',11, 'admin'),
+	   ('[기본]번호-전화번호',	'형식',	'매치',	'^[0-9]{2,3}[0-9]{3,4}[0-9]{4}$',	'기본검증룰',11, 'admin'),
+	   ('[기본]번호-전화번호(-)',	'형식',	'매치',	'^[0-9]{2,3}-[0-9]{3,4}-[0-9]{4}$',	'기본검증룰',11, 'admin'),
+	   ('[기본]번호-주민등록번호',	'형식',	'매치',	'^([0-9]{2}(0[1-9]|1[0-2])(?:0[1-9]|[1,2][0-9]|3[0,1]))[1-4][0-9]{6}$',	'기본검증룰',11, 'admin'),
+	   ('[기본]번호-주민등록번호(-)',	'형식',	'매치',	'^(?:[0-9]{2}(?:0[1-9]|1[0-2])(?:0[1-9]|[1,2][0-9]|3[0,1]))-[1-4][0-9]{6}$',	'기본검증룰',11, 'admin'),
+	   ('[기본]번호-휴대폰번호',	'형식',	'매치',	'^01(0|1|[6-9])[0-9]{7,8}$',	'기본검증룰',11, 'admin'),
+	   ('[기본]번호-휴대폰번호(-)',	'형식',	'매치',	'^01(0|1|[6-9])-[0-9]{3,4}-[0-9]{4}$',	'기본검증룰',11, 'admin'),
+	   ('[기본]형식 공백/특수문자',	'형식',	'매치',	'^[0-9|a-z|A-Z|ㄱ-ㅎ|ㅏ-ㅣ|가-힣]*$','기본검증룰',  7, 'admin'),
+	   ('[기본]형식 한글깨짐',	'형식',	'매치',	'.*[ㄱ-ㅎㅏ-ㅣ]+.*','기본검증룰',6, 'admin'),
+	   ('[기본]필수값',	'필수값',	'매치',	'NOT NULL','기본검증룰',8, 'admin'),
+	   ('[기본]금액-마이너스 금액 불가',	'범위',	'매치',	'컬럼 >= 0','기본검증룰',14, 'admin'),
+	   ('[기본]금액-양수',	'범위',	'매치',	'컬럼 > 0',	'기본검증룰',14, 'admin'),
+	   ('[기본]금액-음수',	'범위',	'매치',	'컬럼 < 0',	'기본검증룰',14, 'admin'),
+	   ('[기본]금액-전체',	'범위',	'매치',	'컬럼 >-999999999 AND 컬럼 < 999999999',	'기본검증룰',14, 'admin'),
+	   ('[기본]수량-마이너스 수량 불가',	'범위',	'매치',	'컬럼 >= 0',	'기본검증룰',15, 'admin'),
+	   ('[기본]수량-양수',	'범위',	'매치',	'컬럼 > 0',	'기본검증룰',15, 'admin'),
+	   ('[기본]수량-음수',	'범위',	'매치',	'컬럼 < 0',	'기본검증룰',15, 'admin'),
+	   ('[기본]수량-전체',	'범위',	'매치',	'컬럼 >-999999999 AND 컬럼 < 999999999',	'기본검증룰',15, 'admin'),
+	   ('[기본]율-백분율(0~100)',	'범위',	'매치',	'컬럼 >= 0 AND 컬럼 <= 100',	'기본검증룰',16, 'admin'),
+	   ('[기본]율-양수',	'범위',	'매치',	'컬럼 > 0',	'기본검증룰',16, 'admin'),
+	   ('[기본]율-음수',	'범위',	'매치',	'컬럼 < 0',	'기본검증룰',16, 'admin'),
+	   ('[기본]율-전체',	'범위',	'매치',	'컬럼 >=-100 AND 컬럼 <= 100',	'기본검증룰',16, 'admin'),
+	   ('[기본]여부(0,1)',	'여부',	'매치',	'0,1',	'기본검증룰',12, 'admin'),
+	   ('[기본]여부(01,02)',	'여부',	'매치',	'01,02',	'기본검증룰',12, 'admin'),
+	   ('[기본]여부(1,2)',	'여부',	'매치',	'1,2',	'기본검증룰',12, 'admin'),
+	   ('[기본]여부(O,X)',	'여부',	'매치',	'O,X',	'기본검증룰',12, 'admin'),
+	   ('[기본]여부(T,F)',	'여부',	'매치',	'T,F',	'기본검증룰',12, 'admin'),
+	   ('[기본]여부(Y,N)',	'여부',	'매치',	'Y,N',	'기본검증룰',12, 'admin'),
+	   ('[기본]여부(y,n)',	'여부',	'매치',	'y,n',	'기본검증룰',12, 'admin'),
+	   ('[기본]여부(남여 성별)',	'여부',	'매치',	'남,여',	'기본검증룰',12,'admin');

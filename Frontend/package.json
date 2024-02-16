@@ -1,0 +1,41 @@
+{
+  "dependencies": {
+    "@amcharts/amcharts5": "^5.5.7",
+    "@babel/cli": "7.19.3",
+    "@babel/core": "7.19.3",
+    "@jamescoyle/vue-icon": "^0.1.2",
+    "@mdi/js": "^7.4.47",
+    "axios": "^1.6.5",
+    "babel-loader": "8.2.5",
+    "css-loader": "6.7.1",
+    "express": "4.18.1",
+    "express-http-proxy": "^2.0.0",
+    "file-loader": "6.2.0",
+    "file-saver": "^2.0.5",
+    "fs": "0.0.1-security",
+    "lodash": "^4.17.21",
+    "new-line": "^1.1.1",
+    "pg": "8.8.0",
+    "url-loader": "4.1.1",
+    "vue": "3.2.40",
+    "vue-cookies": "^1.8.3",
+    "vue-jstree": "^2.1.6",
+    "vue-loader": "^17.0.0",
+    "vue-router": "4.1.5",
+    "vue-style-loader": "4.1.3",
+    "vue3-sfc-loader": "^0.8.4",
+    "vuex": "^4.1.0",
+    "webpack": "5.74.0",
+    "webpack-cli": "4.10.0"
+  },
+  "scripts": {
+    "prod": "set NODE_ENV=production&&node ./server/modules/web/server.js",
+    "dev": "set NODE_ENV=development&&node ./server/modules/web/server.js",
+    "windows-prod": "set NODE_ENV=production&&node ./server/modules/web/server.js",
+    "windows-dev": "set NODE_ENV=development&&node ./server/modules/web/server.js",
+    "linux-prod": "export NODE_ENV=production&&node ./server/modules/web/server.js",
+    "linux-dev": "export NODE_ENV=development&&node ./server/modules/web/server.js",
+    "webpack-build": "webpack",
+    "webpack-build-watch": "webpack --watch"
+  }
+}

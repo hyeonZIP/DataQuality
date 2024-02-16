@@ -1,0 +1,209 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+
+<!--
+	작성자 : 임재현
+	작성일 : 2024.01.23
+	내용 : 컬럼분석 검색 조건/ DBMS연결상태 성공인지? 스키마 수집 제외 대상이 아닌지? 검색 조건으로 입력한 테이블 및 컬럼 명
+ -->
+<mapper namespace="kr.co.takensoft.dataQuality.data.dao.ColumnDataDAO">
+
+    <!--
+        작성자 : 임재현
+        작성일 : 2024.01.23
+        내용 : DBMS 선택
+     -->
+    <select id="selectDbms" parameterType="String" resultType="String">
+        SELECT
+            dbms_name
+        FROM
+            db_data
+        WHERE
+            user_id = #{user_id}
+        AND dbms_connect = '1'
+    </select>
+
+    <!--
+    작성자 : 임재현
+    작성일 : 2024.01.23
+    내용 : 선택한 DBMS ID에 맞는 스키마 선택, + 서로 다른 사용자가 같은 이름의 dbms_name을 설정할 경우 오류 발생 > "AND" 이후 코드 추가로 해결
+    -->
+    <select id="selectSchema" parameterType="String" resultType="String">
+        SELECT
+            schema_name
+        FROM
+            schema_data
+        WHERE
+            dbms_id = (SELECT dbms_id FROM db_data WHERE dbms_name = #{dbms_name} AND user_id = #{user_id})
+        AND schema_yn = 'y'
+    </select>
+
+    <!--
+    작성자 : 임재현
+    작성일 : 2024.01.24
+    내용 : 검색결과 테이블 조회
+    -->
+    <select id="selectSearchResult" parameterType="HashMap" resultType="HashMap">
+        SELECT DISTINCT
+        dbd.dbms_name,
+        sd.schema_name,
+        td.table_nm,
+        td.table_nm_k,
+        td.table_id,
+        sd.schema_id,
+        dbd.dbms_id,
+        td.table_yn
+        FROM
+        db_data dbd
+        JOIN
+        schema_data sd ON dbd.dbms_id = sd.dbms_id
+        JOIN
+        table_data td ON sd.schema_id = td.schema_id
+        <if test="column_nm !=''">
+            JOIN
+            column_data cd ON td.table_id = cd.table_id
+        </if>
+        WHERE
+        dbd.user_id = #{user_id}
+        AND dbd.dbms_connect = '1'
+        AND sd.schema_yn = 'y'
+        AND td.table_yn = 'y'
+        AND dbd.dbms_name = #{dbms_name}
+        AND sd.schema_name = #{schema_name}
+        <if test="table_nm!=''">
+            AND td.table_nm LIKE CONCAT('%', #{table_nm}, '%')
+        </if>
+        <if test="column_nm !=''">
+            AND cd.column_nm LIKE CONCAT('%', #{column_nm}, '%')
+        </if>
+        ORDER BY dbd.dbms_id DESC
+        OFFSET #{startIndex} LIMIT #{perPage};
+    </select>
+
+    <!--
+	작성자 : 임재현
+	작성일 : 2024.01.24
+	내용 : 검색결과 테이블 페이징 구현
+    -->
+    <select id="searchResultCount" parameterType="HashMap" resultType="int">
+        SELECT
+        COUNT(*)
+        FROM
+        db_data dbd
+        JOIN
+        schema_data sd ON dbd.dbms_id = sd.dbms_id
+        JOIN
+        table_data td ON sd.schema_id = td.schema_id
+        <if test="column_nm !=''">
+            JOIN
+            column_data cd ON td.table_id = cd.table_id
+        </if>
+        WHERE
+        dbd.user_id = #{user_id}
+        AND dbd.dbms_connect = '1'
+        AND sd.schema_yn = 'y'
+        AND dbd.dbms_name = #{dbms_name}
+        AND sd.schema_name = #{schema_name}
+        <if test="table_nm!=''">
+            AND td.table_nm LIKE CONCAT('%', #{table_nm}, '%')
+        </if>
+        <if test="column_nm !=''">
+            AND cd.column_nm LIKE CONCAT('%', #{column_nm}, '%')
+        </if>
+    </select>
+
+    <!--
+    작성자 : 임재현
+    작성일 : 2024.01.25
+    내용 : 테이블 컬럼 목록 조회
+    -->
+    <select id="selectTableColumn" parameterType="HashMap" resultType="HashMap">
+        SELECT
+            column_nm,
+            column_nm_k,
+            column_type,
+            column_isnull,
+            column_id
+        FROM
+            column_data
+        WHERE
+            table_id = #{table_id}
+        OFFSET #{startIndex1} LIMIT #{perPage};
+    </select>
+
+    <!--
+    작성자 : 임재현
+    작성일 : 2024.01.25
+    내용 : 테이블 컬럼 COUNT
+    -->
+    <select id="tableColumnCount" parameterType="HashMap" resultType="int">
+        SELECT
+            COUNT(*)
+        FROM
+            table_data td
+        JOIN
+            column_data cd ON td.table_id = cd.table_id
+        WHERE
+            cd.table_id = #{table_id}
+    </select>
+
+    <!--
+    작성자 : 박민혁
+    작성일 : 2024.02.06
+    내용 : 컬럼 분석을 위해서 컬럼 데이터 가져오기
+    -->
+    <select id="selectTableColumnNM" parameterType="HashMap" resultType="HashMap">
+        SELECT
+            column_nm,
+            column_id
+        FROM
+            column_data
+        WHERE
+            table_id = #{table_id}
+    </select>
+    <!--
+    작성자 : 박민혁
+    작성일 : 2024.02.06
+    내용 : 컬럼 분석 결과 select
+    -->
+    <select id="selectColumnAnl" parameterType="HashMap" resultType="HashMap">
+        SELECT
+            column_anl_id,
+            column_anl_value,
+            column_anl_count
+        FROM
+            column_analyze
+        WHERE
+            column_id = #{column_id}
+    </select>
+    <!--
+    작성자 : 박민혁
+    작성일 : 2024.02.06
+    내용 : 컬럼 분석 결과 insert
+    -->
+    <insert id="insertColumnAnl" parameterType="HashMap">
+        INSERT INTO column_analyze
+        (
+            column_anl_value,
+            column_anl_count,
+            column_id
+        )
+        VALUES
+        (
+            #{column_anl_value},
+            #{column_anl_count},
+            #{column_id}
+        );
+    </insert>
+    <!--
+    작성자 : 박민혁
+    작성일 : 2024.02.06
+    내용 : 컬럼 분석 결과 delete
+    -->
+    <delete id="deleteColumnAnl">
+        DELETE FROM column_analyze
+        WHERE
+            column_id = #{column_id};
+    </delete>
+</mapper>

@@ -1,0 +1,141 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<!--
+	작성자 : 정다정
+	작성일 : 2024.01.26
+	내용 : 중복 분석 관리
+ -->
+
+<mapper namespace="kr.co.takensoft.dataQuality.rule.dao.DupRulManagementDAO">
+
+    <!--
+        작성자 : 정다정
+        작성일 : 2024.01.26
+        내용 :  컬럼 조회
+     -->
+    <select id="selectColumn" parameterType="HashMap" resultType="HashMap">
+        SELECT
+        cd.*
+        FROM
+            column_data cd
+        WHERE
+            cd.table_id = #{table_id}
+        ORDER BY column_id ASC
+        OFFSET #{startIndex} LIMIT #{perPage};
+    </select>
+
+    <!--
+        작성자 : 정다정
+        작성일 : 2024.01.26
+        내용 : 컬럼 총 개수
+    -->
+    <select id="selectColumnCount" parameterType="HashMap" resultType="int">
+        SELECT
+            count(*)
+        FROM
+            column_data
+        WHERE
+            table_id = #{table_id}
+    </select>
+
+    <!--
+        작성자 : 정다정
+        작성일 : 2024.01.26
+        내용 : 중복 분석 컬럼 저장
+      -->
+    <insert id="insertDupRule" parameterType="HashMap">
+        INSERT INTO dupl_rule (column_id, column_id_list, dqi_id)
+        VALUES
+        (
+            #{mainColumnId},
+            #{columnListId},
+            9
+        )
+
+    </insert>
+
+    <!--
+        작성자 : 정다정
+        작성일 : 2024.02.01
+        내용 : 중복 분석 컬럼 저장 취소
+      -->
+    <delete id="deleteDupRule" parameterType="HashMap">
+        DELETE FROM dupl_rule
+        WHERE dupl_rule_id IN
+        <foreach collection="ruleIdList" item="dupl_rule_ids" open="(" separator="," close=")">
+            #{dupl_rule_ids}
+        </foreach>
+    </delete>
+
+    <!--
+        작성자 : 박민혁
+        작성일 : 2024.02.02
+        내용 : 중복 분석 id 가져오기
+    -->
+    <select id="selectDuplRuleId" parameterType="HashMap" resultType="HashMap">
+        SELECT
+            dupl_rule_id
+        FROM
+            dupl_rule
+        WHERE column_id = #{mainColumnId}
+        ORDER BY dupl_rule_id DESC
+        LIMIT 1;
+    </select>
+
+    <!--
+    작성자 : 임재현
+    작성일 : 2024.02.06
+    내용 : 중복검사 선택 대상 테이블 조회
+    -->
+    <select id="selectCheckedList" parameterType="HashMap" resultType="HashMap">
+        SELECT
+            dr.column_id_list
+            , dr.dupl_rule_id
+            , td.table_nm
+            , sd.schema_name
+            , dd.dbms_name
+        FROM
+            dupl_rule dr
+        JOIN
+            column_data cd ON cd.column_id = dr.column_id
+        JOIN
+            table_data td ON td.table_id = cd.table_id
+        JOIN
+            schema_data sd ON sd.schema_id = td.schema_id
+        JOIN
+            db_data dd ON dd.dbms_id = sd.dbms_id
+        WHERE
+            sd.schema_yn = 'y'
+        ORDER BY
+            dr.dupl_rule_id ASC
+        OFFSET #{startIndex} LIMIT #{perPage};
+    </select>
+
+    <!--
+    작성자 : 임재현
+    작성일 : 2024.02.06
+    내용 : 중복검사 선택 대상 테이블 페이징
+    -->
+    <select id="countCheckedList" parameterType="HashMap" resultType="int">
+        SELECT
+            count(*)
+        FROM
+            dupl_rule dr
+        JOIN
+            column_data cd ON cd.column_id = dr.column_id
+    </select>
+    <!--
+    작성자 : 임재현
+    작성일 : 2024.02.06
+    내용 : 중복검사 선택 대상 테이블 컬럼명 조회 기능
+    -->
+    <select id="selectColumnNm" parameterType="int" resultType="String">
+        SELECT
+            column_nm
+        FROM
+            column_data
+        WHERE
+            column_id = #{b}
+    </select>
+</mapper>

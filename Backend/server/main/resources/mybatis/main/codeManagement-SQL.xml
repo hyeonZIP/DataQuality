@@ -1,0 +1,181 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<!--
+	작성자 : 김준식
+	작성일 : 2024.01.18
+	내용 : 코드 관리
+ -->
+<mapper namespace="kr.co.takensoft.dataQuality.rule.dao.CodeManagementDAO">
+    <!--
+        작성자 : 김준식
+        작성일 : 2024.01.18
+        내용 :  코드 관리 데이터 목록 조회(검색 포함)
+     -->
+    <select id="selectCodeList" parameterType="HashMap" resultType="HashMap">
+        SELECT
+            cr.code_id AS cr_code_id,
+            cr.code_type AS cr_code_type,
+            cr.code_nm AS cr_code_nm,
+            cr.code_sql AS cr_code_sql,
+            cr.code_explain AS cr_code_explain,
+            cr.dbms_id AS cr_dbms_id,
+            dd.dbms_name AS dd_dbms_name
+        FROM code_rule cr
+        JOIN db_data dd ON cr.dbms_id = dd.dbms_id
+        WHERE dd.user_id = #{user_id} AND dd.dbms_connect = '1'
+        <choose>
+            <!-- 진단대상 DBMS와 코드유형을 선택하였을 때 -->
+            <when test="dbms_id != null and code_type != null">
+                AND dd.dbms_name = #{dbms_id} AND cr.code_type = #{code_type}
+            </when>
+            <!-- 진단대상 DBMS만 선택하였을 때 -->
+            <when test="dbms_id != null and code_type == null">
+                AND dd.dbms_name = #{dbms_id}
+            </when>
+            <!-- 코드유형만 선택하였을 때 -->
+            <when test="dbms_id == null and code_type != null">
+                AND cr.code_type = #{code_type}
+            </when>
+        </choose>
+        <if test="code_nm != null">
+            AND
+            cr.code_nm LIKE CONCAT('%', #{code_nm}, '%')
+        </if>
+        ORDER BY cr.code_id DESC
+        LIMIT #{perPage} OFFSET #{startIdx};
+    </select>
+
+    <!--
+        작성자 : 김준식
+        작성일 : 2024.01.18
+        내용 :  코드 관리 데이터 추가
+     -->
+    <insert id="insertCode" parameterType="HashMap">
+        INSERT INTO code_rule
+        (
+            code_type,
+            code_nm,
+            code_sql,
+            code_explain,
+            dqi_id,
+            dbms_id
+        )
+        VALUES
+        (
+            #{cr_code_type},
+            #{cr_code_nm},
+            #{cr_code_sql},
+            #{cr_code_explain},
+            13,
+            #{cr_dbms_id}
+        )
+    </insert>
+
+    <!--
+        작성자 : 김준식
+        작성일 : 2024.01.18
+        내용 :  코드 관리 데이터 수정
+     -->
+    <update id="updateCode" parameterType="HashMap" >
+        UPDATE code_rule
+        SET
+            code_type = #{cr_code_type},
+            code_nm = #{cr_code_nm},
+            code_sql = #{cr_code_sql},
+            code_explain = #{cr_code_explain},
+            dbms_id = #{cr_dbms_id}
+        WHERE code_id = #{cr_code_id}
+    </update>
+
+    <!--
+        작성자 : 김준식
+        작성일 : 2024.01.18
+        내용 :  선택한 코드 관리 삭제
+     -->
+    <delete id="deleteCode" parameterType="HashMap" >
+        DELETE FROM code_rule
+        WHERE code_id IN 
+        <foreach collection="params" item="item" open="(" close=")" separator=",">
+            #{item}
+        </foreach>
+    </delete>
+
+    <!--
+        작성자 : 김준식
+        작성일 : 2024.01.22
+        내용 :  코드 관리 모든 항목 삭제
+     -->
+    <delete id="allCodeDelete" parameterType="HashMap" >
+        DELETE FROM code_rule
+    </delete>
+
+    <!--
+        작성자 : 김준식
+        작성일 : 2024.01.18
+        내용 :  목록들 중에서 하나의 코드 관리 데이터 조회
+     -->
+    <select id="oneSelectCode" resultType="HashMap" parameterType="HashMap">
+        SELECT
+            cr.code_id AS cr_code_id,
+            cr.code_type AS cr_code_type,
+            cr.code_nm AS cr_code_nm,
+            cr.code_sql AS cr_code_sql,
+            cr.code_explain AS cr_code_explain,
+            cr.dbms_id AS cr_dbms_id,
+            dd.dbms_name AS dd_dbms_name
+        FROM code_rule cr
+        JOIN db_data dd ON cr.dbms_id = dd.dbms_id
+    </select>
+
+    <!--
+        작성자 : 김준식
+        작성일 : 2024.01.18
+        내용 :  진단대상DBMS 선택을 위해 데이터를 불러옴
+     -->
+    <select id="getDBDataName" parameterType="HashMap" resultType="HashMap">
+        SELECT DISTINCT dbms_name, dbms_id
+        FROM db_data
+        WHERE user_id = #{user_id} AND dbms_connect = '1'
+    </select>
+
+    <!--
+        작성자 : 김준식
+        작성일 : 2024.01.22
+        내용 :  코드관리 데이터의 총 개수를 불러옴
+     -->
+    <select id="cmListCount" parameterType="HashMap" resultType="int">
+        SELECT COUNT(*)
+        FROM code_rule cr
+        JOIN db_data dd ON cr.dbms_id = dd.dbms_id
+        WHERE dd.user_id = #{user_id} AND dd.dbms_connect = '1'
+    </select>
+
+    <!--
+        작성자 : 김준식
+        작성일 : 2024.01.22
+        내용 :  검색조건에 따른 데이터의 총 개수
+     -->
+    <select id="cmSearchCount" parameterType="HashMap" resultType="int">
+        SELECT COUNT (*)
+        FROM code_rule cr
+        JOIN db_data dd ON cr.dbms_id = dd.dbms_id
+        WHERE dd.user_id = #{user_id} AND dd.dbms_connect = '1'
+        <choose>
+            <!-- 진단대상 DBMS와 코드유형을 선택하였을 때 -->
+            <when test="dbms_id != null and code_type != null">
+                AND dd.dbms_name = #{dbms_id} AND cr.code_type = #{code_type}
+            </when>
+            <!-- 진단대상 DBMS만 선택하였을 때 -->
+            <when test="dbms_id != null and code_type == null">
+                AND dd.dbms_name = #{dbms_id}
+            </when>
+            <!-- 코드유형만 선택하였을 때 -->
+            <when test="dbms_id == null and code_type != null">
+                AND cr.code_type = #{code_type}
+            </when>
+        </choose>
+    </select>
+
+
+</mapper>

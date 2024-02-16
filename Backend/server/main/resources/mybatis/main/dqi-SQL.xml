@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="kr.co.takensoft.dataQuality.data.dao.DQIDAO">
+
+    <!--
+	작성자 : 임재현
+	작성일 : 2024.01.17
+	내용 : 메타데이터 테이블
+    -->
+    <select id="selectDqiTable" parameterType="HashMap" resultType="HashMap">
+        SELECT
+              dqi_nm_high
+              , dqi_nm
+              , dqi_type
+              , dqi_explain
+	    FROM
+	        dqi
+	    ORDER BY dqi_id ASC
+    </select>
+
+</mapper>

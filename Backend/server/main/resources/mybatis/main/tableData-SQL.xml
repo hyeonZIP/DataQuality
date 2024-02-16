@@ -1,0 +1,154 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<!--
+	작성자 : 정다정
+	작성일 : 2024.01.23
+	내용 : 진단 대상 테이블 관리
+ -->
+
+<mapper namespace="kr.co.takensoft.dataQuality.data.dao.TableDataDAO">
+
+    <!--
+        작성자 : 정다정
+        작성일 : 2024.01.23
+        내용 : 검색 용 DBMS 명 조회
+    -->
+    <select id="selectDbmsName" parameterType="HashMap" resultType="HashMap">
+        SELECT
+            dbms_name
+            , dbms_id
+        FROM
+            db_data
+        WHERE
+            user_id = #{user_id} AND dbms_connect = '1';
+    </select>
+
+    <!--
+        작성자 : 정다정
+        작성일 : 2024.01.23
+        내용 :  검색 용 스키마 명 조회
+     -->
+    <select id="selectSchemaName" parameterType="HashMap" resultType="HashMap">
+        SELECT
+            schema_name
+            , schema_id
+
+        FROM
+            schema_data
+
+        WHERE
+            dbms_id = #{dbms_id} AND schema_yn = 'y'
+    </select>
+
+    <!--
+        작성자 : 정다정
+        작성일 : 2024.01.23
+        내용 : 테이블 검색 조회
+     -->
+    <select id="selectTableList" parameterType="HashMap" resultType="HashMap">
+        SELECT
+        td.table_id
+        , td.table_yn
+        , td.table_nm
+        , td.table_nm_k
+        , td.table_explain
+        , sc.schema_name
+        , db.dbms_name
+        FROM
+        table_data td
+        INNER JOIN schema_data sc ON td.schema_id = sc.schema_id
+        INNER JOIN db_data db ON sc.dbms_id = db.dbms_id
+        <choose>
+            <when test="schema_id == null and dbms_id == null">
+                WHERE db.user_id = #{user_id}
+            </when>
+            <when test="schema_id == null and dbms_id != null">
+                WHERE db.dbms_id = #{dbms_id}
+            </when>
+            <when test="schema_id != null">
+                WHERE td.schema_id = #{schema_id}
+            </when>
+        </choose>
+        AND db.dbms_connect = '1'
+        AND sc.schema_yn = 'y'
+        ORDER BY td.table_id ASC
+        OFFSET #{startIndex} LIMIT #{perPage};
+    </select>
+
+
+    <!--
+        작성자 : 정다정
+        작성일 : 2024.01.24
+        내용 : 제외 여부, 사유 저장
+     -->
+    <update id="updateTableData" parameterType="HashMap">
+        <foreach collection="data" item="item" separator=";">
+            UPDATE table_data
+            <set>
+                <choose>
+                    <when test="item.state">
+                        table_explain = #{item.update_explain},
+                        table_yn = 'n'
+                    </when>
+                    <otherwise>
+                        table_explain = null,
+                        table_yn = 'y'
+                    </otherwise>
+                </choose>
+            </set>
+            WHERE table_id IN
+            <foreach collection="item.updateTableId" item="tableId" open="(" separator="," close=")">
+                #{tableId}
+            </foreach>
+        </foreach>
+    </update>
+
+    <!--
+        작성자 : 정다정
+        작성일 : 2024.01.24
+        내용 : 테이블 목록 COUNT
+    -->
+    <select id="tableListCount" parameterType="HashMap" resultType="int">
+        SELECT
+        COUNT(*)
+        FROM
+        table_data td
+        INNER JOIN schema_data sc ON td.schema_id = sc.schema_id
+        INNER JOIN db_data db ON sc.dbms_id = db.dbms_id
+        <choose>
+            <when test="schema_id == null and dbms_id == null">
+                WHERE db.user_id = #{user_id}
+            </when>
+            <when test="schema_id == null and dbms_id != null">
+                WHERE db.dbms_id = #{dbms_id}
+            </when>
+            <when test="schema_id != null">
+                WHERE td.schema_id = #{schema_id}
+            </when>
+        </choose>
+        AND db.dbms_connect = '1'
+        AND sc.schema_yn = 'y'
+    </select>
+
+    <!--
+        작성자 : 박민혁
+        작성일 : 2024.01.26
+        내용 : 메인 화면 용 테이블 목록 모두 COUNT
+    -->
+    <select id="tableListAllCount" parameterType="HashMap" resultType="int">
+        SELECT
+            COUNT(*)
+        FROM
+            DB_DATA db
+        JOIN schema_data ON db.dbms_id = schema_data.dbms_id
+        JOIN table_data ON schema_data.schema_id = table_data.schema_id
+       WHERE
+            db.user_id = #{user_id}
+            AND
+            db.dbms_connect = '1'
+            AND
+            schema_data.schema_yn = 'y'
+    </select>
+
+</mapper>

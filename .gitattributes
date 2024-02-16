@@ -1,0 +1,2 @@
+Frontend/server/modules/db/oracle/client/client_21.6/oraociei.dll filter=lfs diff=lfs merge=lfs -text
+Frontend/server/modules/db/oracle/client/client_19.16/oraociei19.dll filter=lfs diff=lfs merge=lfs -text

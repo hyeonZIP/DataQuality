@@ -1,0 +1,297 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<!--
+	작성자 : 김준식
+	작성일 : 2024.01.26
+	내용 : 데이터 규칙 관리
+ -->
+<mapper namespace="kr.co.takensoft.dataQuality.rule.dao.RefRuleManagementDAO">
+
+    <!-- 데이터규칙 관리 부분 -->
+    <!--
+	작성자 : 김준식
+	작성일 : 2024.01.29
+	내용 : 검색조건에 필요한 DBMS명 검색
+    -->
+    <select id="dbmsList" parameterType="HashMap" resultType="HashMap">
+        SELECT dbms_name
+        FROM db_data
+        WHERE user_id = #{user_id} AND dbms_connect = '1'
+    </select>
+
+    <!--
+	작성자 : 김준식
+	작성일 : 2024.01.29
+	내용 : 검색조건에 필요한 스키마명 검색
+    -->
+    <select id="schemaList" parameterType="HashMap" resultType="HashMap">
+        SELECT sd.schema_name as schema_name
+        FROM db_data dd
+        JOIN schema_data sd ON dd.dbms_id = sd.dbms_id
+        WHERE dd.user_id = #{user_id} AND sd.schema_yn = 'y' AND dd.dbms_name = #{dbms_name} AND dd.dbms_connect = '1'
+    </select>
+
+    <!--
+	작성자 : 김준식
+	작성일 : 2024.01.29
+	내용 : 검색을 하였을 때 나오는 데이터 목록들
+    -->
+    <select id="searchDataList" parameterType="HashMap" resultType="HashMap">
+        SELECT DISTINCT
+            dd.dbms_id,
+            dd.dbms_name as dbms_name,
+            sd.schema_name as schema_name,
+            td.table_nm as table_name,
+            td.table_nm_k as table_name_k
+        FROM db_data dd
+        JOIN schema_data sd ON dd.dbms_id = sd.dbms_id
+        JOIN table_data td ON sd.schema_id = td.schema_id
+        <if test="column_name != null">
+            JOIN column_data cd ON td.table_id = cd.table_id
+        </if>
+        WHERE dd.user_id = #{user_id}
+                AND dd.dbms_connect = '1'
+                AND sd.schema_yn = 'y'
+                AND td.table_yn = 'y'
+        <if test="dbms_name != null">
+            AND dd.dbms_name = #{dbms_name}
+        </if>
+        <if test="schema_name != null">
+            AND sd.schema_name = #{schema_name}
+        </if>
+        <if test="table_name != ''">
+            AND td.table_nm LIKE CONCAT('%', #{table_name}, '%')
+        </if>
+        <if test="column_name != ''">
+            AND cd.column_nm LIKE CONCAT('%', #{column_name}, '%')
+        </if>
+        ORDER BY dd.dbms_id, dd.dbms_name
+        LIMIT #{perPage} OFFSET #{startIdx};
+    </select>
+
+    <!--
+	작성자 : 김준식
+	작성일 : 2024.01.29
+	내용 : 검색을 하였을 때 나오는 데이터 목록들 개수
+    -->
+    <select id="searchDataListCount" parameterType="HashMap" resultType="int">
+        SELECT
+            COUNT (DISTINCT td.table_nm)
+        FROM db_data dd
+        JOIN schema_data sd ON dd.dbms_id = sd.dbms_id
+        JOIN table_data td ON sd.schema_id = td.schema_id
+        <if test="column_name != ''">
+            JOIN column_data cd ON td.table_id = cd.table_id
+        </if>
+        WHERE dd.user_id = #{user_id}
+        AND dd.dbms_connect = '1'
+        AND sd.schema_yn = 'y'
+        AND td.table_yn = 'y'
+        <if test="dbms_name != null">
+            AND dd.dbms_name = #{dbms_name}
+        </if>
+        <if test="schema_name != null">
+            AND sd.schema_name = #{schema_name}
+        </if>
+        <if test="table_name != ''">
+            AND td.table_nm LIKE CONCAT('%', #{table_name}, '%')
+        </if>
+        <if test="column_name != ''">
+            AND cd.column_nm LIKE CONCAT('%', #{column_name}, '%')
+        </if>
+    </select>
+
+    <!--
+	작성자 : 김준식
+	작성일 : 2024.01.29
+	내용 : 조회된 목록들중 하나를 선택
+    -->
+    <select id="oneSelectList" parameterType="HashMap" resultType="HashMap">
+        SELECT
+            dd.dbms_name as dbms_name,
+            sd.schema_name as schema_name,
+            td.table_nm as child_table_name,
+            cd.column_nm as child_column_name,
+            parent_table.table_nm as parent_table_name,
+            parent_table.table_nm_k as parent_table_name_k,
+            parent_col.column_nm as parent_column_name,
+            rr.ref_rule_id as ref_rule_id
+        FROM db_data dd
+            JOIN schema_data sd ON dd.dbms_id = sd.dbms_id
+            JOIN table_data td ON sd.schema_id = td.schema_id
+            JOIN column_data cd ON td.table_id = cd.table_id
+            JOIN ref_rule rr ON cd.column_id = rr.child_col_id
+            JOIN column_data parent_col ON rr.parent_col_id = parent_col.column_id
+            JOIN table_data parent_table ON parent_col.table_id = parent_table.table_id
+        WHERE dd.user_id = #{user_id}
+                AND dd.dbms_connect = '1'
+                AND dd.dbms_name = #{dbms_name}
+                AND sd.schema_yn = 'y'
+                AND sd.schema_name = #{schema_name}
+                AND td.table_yn = 'y'
+                AND td.table_nm = #{table_name}
+        LIMIT #{perPage} OFFSET #{startIdx};
+    </select>
+
+    <!--
+	작성자 : 김준식
+	작성일 : 2024.01.29
+	내용 : 조회된 목록들중 하나를 선택한 후 부모 자식 관계 총 개수
+    -->
+    <select id="oneSelectListCount" parameterType="HashMap" resultType="int">
+        SELECT
+            COUNT(*)
+        FROM db_data dd
+            JOIN schema_data sd ON dd.dbms_id = sd.dbms_id
+            JOIN table_data td ON sd.schema_id = td.schema_id
+            JOIN column_data cd ON td.table_id = cd.table_id
+            JOIN ref_rule rr ON cd.column_id = rr.child_col_id
+            JOIN column_data parent_col ON rr.parent_col_id = parent_col.column_id
+            JOIN table_data parent_table ON parent_col.table_id = parent_table.table_id
+        WHERE dd.user_id = #{user_id}
+                AND dd.dbms_connect = '1'
+                AND dd.dbms_name = #{dbms_name}
+                AND sd.schema_yn = 'y'
+                AND sd.schema_name = #{schema_name}
+                AND td.table_yn = 'y'
+                AND td.table_nm = #{table_name}
+    </select>
+
+    <!-- 참조 무결성 추가 부분 -->
+    <!--
+	작성자 : 김준식
+	작성일 : 2024.01.26
+	내용 : 참조 무결성 추가에서 부모테이블 검색
+    -->
+    <select id="searchParentTable" parameterType="HashMap" resultType="HashMap">
+        SELECT
+            dd.dbms_name as dbms_name,
+            sd.schema_name as schema_name,
+            td.table_id as table_id,
+            td.table_nm as table_nm,
+            td.table_nm_k as table_nm_k
+
+        FROM db_data dd
+        JOIN schema_data sd ON dd.dbms_id = sd.dbms_id
+        JOIN table_data td ON sd.schema_id = td.schema_id
+        WHERE dd.user_id = #{user_id}
+                AND dd.dbms_connect = '1'
+                AND sd.schema_yn = 'y'
+                AND td.table_yn = 'y'
+                AND dd.dbms_name = #{dbms_name}
+                AND sd.schema_name = #{schema_name}
+                AND NOT td.table_nm IN (#{child_table_name})
+        <choose>
+            <when test="table_name != null">
+                AND td.table_nm LIKE CONCAT('%', #{table_name}, '%')
+            </when>
+        </choose>
+        LIMIT #{perPage} OFFSET #{startIdx};
+    </select>
+
+    <!--
+	작성자 : 김준식
+	작성일 : 2024.01.26
+	내용 : 참조 무결성 추가에서 부모테이블 검색한 데이터 총 개수
+    -->
+    <select id="searchParentTableCount" parameterType="HashMap" resultType="int">
+        SELECT
+            COUNT (*)
+        FROM db_data dd
+        JOIN schema_data sd ON dd.dbms_id = sd.dbms_id
+        JOIN table_data td ON sd.schema_id = td.schema_id
+        WHERE dd.user_id = #{user_id}
+        AND dd.dbms_connect = '1'
+        AND sd.schema_yn = 'y'
+        AND td.table_yn = 'y'
+        AND dd.dbms_name = #{dbms_name}
+        AND sd.schema_name = #{schema_name}
+        <choose>
+            <when test="table_name != null">
+                AND td.table_nm LIKE CONCAT('%', #{table_name}, '%')
+            </when>
+        </choose>
+    </select>
+
+    <!--
+	작성자 : 김준식
+	작성일 : 2024.01.26
+	내용 : 참조 무결성 추가에서 자식테이블 또는 부모테이블 컬럼 검색
+    -->
+    <select id="childTableList" parameterType="HashMap" resultType="HashMap">
+        SELECT
+            cd.column_id as column_id,
+            cd.column_nm as column_nm,
+            cd.column_nm_k as column_nm_k,
+            cd.column_type as column_type,
+            cd.column_isnull as column_isnull
+        FROM db_data dd
+        JOIN schema_data sd ON sd.dbms_id = dd.dbms_id
+        JOIN table_data td ON td.schema_id = sd.schema_id
+        JOIN column_data cd ON td.table_id = cd.table_id
+        WHERE dd.user_id = #{user_id}
+                AND dd.dbms_connect = '1'
+                AND dd.dbms_name = #{dbms_name}
+                AND sd.schema_name = #{schema_name}
+                AND sd.schema_yn = 'y'
+                AND td.table_yn = 'y'
+                AND td.table_nm = #{table_name}
+
+    </select>
+
+    <!--
+	작성자 : 김준식
+	작성일 : 2024.01.30
+	내용 : 참조무결성 등록
+    -->
+    <insert id="insertRef" parameterType="List" >
+        INSERT INTO ref_rule
+        (
+            dqi_id,
+            child_col_id,
+            parent_col_id
+        )
+        VALUES
+        <foreach collection="list" item="item" separator=",">
+            (5, #{item.child_column_id}, #{item.parent_column_id})
+        </foreach>
+    </insert>
+
+    <!--
+	작성자 : 김준식
+	작성일 : 2024.01.30
+	내용 : 참조무결성 삭제
+    -->
+    <delete id="deleteRef" parameterType="HashMap">
+        DELETE FROM ref_rule
+        WHERE ref_rule_id IN
+        <foreach collection="params" item="index" open="(" separator="," close=")">
+            #{index}
+        </foreach>
+    </delete>
+
+    <!--
+	작성자 : 김준식
+	작성일 : 2024.01.30
+	내용 : 참조무결성에 이미 데이터가 존재 했을 경우 삭제
+    -->
+    <delete id="sameDeleteRef" parameterType="HashMap">
+        DELETE FROM ref_rule
+        WHERE child_col_id = #{child_column_id} AND parent_col_id = #{parent_column_id}
+    </delete>
+
+    <!--
+    작성자 : 박민혁
+    작성일 : 2024.02.07
+    내용 : ref_rule_id 가져오기
+    -->
+    <select id="selectRefRuleId" parameterType="HashMap" resultType="HashMap">
+        SELECT
+            ref_rule_id as ref_rule_id
+        FROM
+            ref_rule
+        WHERE child_col_id = #{child_column_id} AND parent_col_id = #{parent_column_id}
+    </select>
+
+</mapper>

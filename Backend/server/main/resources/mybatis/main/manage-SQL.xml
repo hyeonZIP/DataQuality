@@ -1,0 +1,230 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!--
+    작성자 : 박민혁
+    작성일 : 2024.01.23
+    내용 :  총합 규칙 관리
+ -->
+<mapper namespace="kr.co.takensoft.dataQuality.schedule.dao.ManageDAO">
+    <!--
+        작성자 : 박민혁
+        작성일 : 2024.01.23
+        내용 :  총합 규칙 관리 정보 select
+     -->
+    <select id="selectManageRule" parameterType="HashMap" resultType="HashMap">
+        SELECT distinct
+            manage_rule.manage_rule_id,
+            manage_rule.rule_id,
+            manage_rule.rule_type,
+            db_data.dbms_id,
+            db_data.dbms_name,
+            schema_data.schema_name,
+            table_data.table_nm,
+            table_data.table_nm_k,
+            column_data.column_nm,
+            column_data.column_nm_k,
+        CASE
+            WHEN manage_rule.rule_type = 'domain_val' THEN val_rule.val_rule_nm
+            WHEN manage_rule.rule_type = 'domain_code' THEN code_rule.code_nm
+            WHEN manage_rule.rule_type = 'ref_rule' THEN '참조무결성'
+            WHEN manage_rule.rule_type = 'work_rule' THEN '업무 규칙'
+            WHEN manage_rule.rule_type = 'dupl_rule' THEN '중복 분석'
+            ELSE 'N/A'
+        END as result_nm,
+            val_rule.val_rule_type,
+            val_rule.val_rule_detail
+        FROM
+            manage_rule
+        JOIN db_data ON db_data.user_id = manage_rule.user_id
+        JOIN schema_data ON db_data.dbms_id = schema_data.dbms_id
+        JOIN table_data ON schema_data.schema_id = table_data.schema_id
+        JOIN column_data ON table_data.table_id = column_data.table_id
+        LEFT JOIN domain_rule ON manage_rule.rule_id = domain_rule.rule_id
+        LEFT JOIN val_rule ON domain_rule.val_rule_id = val_rule.val_rule_id
+        LEFT JOIN code_rule ON domain_rule.code_id = code_rule.code_id
+        LEFT JOIN ref_rule ON manage_rule.rule_id = ref_rule.ref_rule_id
+        LEFT JOIN work_rule ON manage_rule.rule_id = work_rule.work_rule_id
+        LEFT JOIN dupl_rule ON manage_rule.rule_id = dupl_rule.dupl_rule_id
+        LEFT JOIN dqi ON dqi.dqi_id = val_rule.dqi_id
+            OR dqi.dqi_id = code_rule.dqi_id
+            OR dqi.dqi_id = ref_rule.dqi_id
+            OR dqi.dqi_id = work_rule.dqi_id
+            OR dqi.dqi_id = dupl_rule.dqi_id
+        WHERE
+            manage_rule.user_id = #{user_id}
+        AND schema_data.schema_yn = 'y'
+        <if test="dbms_name!='none'">
+            AND db_data.dbms_name LIKE CONCAT('%', #{dbms_name}, '%')
+        </if>
+        <if test="schema_name!='none'">
+            AND schema_data.schema_name LIKE CONCAT('%', #{schema_name}, '%')
+        </if>
+        <if test="table_nm!=''">
+            AND table_data.table_nm LIKE CONCAT('%', #{table_nm}, '%')
+        </if>
+        <if test="column_nm!=''">
+            AND column_data.column_nm LIKE CONCAT('%', #{column_nm}, '%')
+        </if>
+        <if test="column_nm_k!=''">
+            AND column_data.column_nm LIKE CONCAT('%', #{column_nm_k}, '%')
+        </if>
+        <if test="rule_type!='none'">
+            AND manage_rule.rule_type = #{rule_type}
+        </if>
+        <if test="dqi_nm != ''">
+            AND dqi.dqi_nm LIKE CONCAT('%', #{dqi_nm}, '%')
+        </if>
+            AND
+            ( column_data.column_id = domain_rule.column_id
+            OR column_data.column_id = ref_rule.child_col_id
+            OR column_data.column_id = work_rule.column_id
+            OR column_data.column_id = dupl_rule.column_id )
+        ORDER BY manage_rule.manage_rule_id DESC
+        OFFSET #{startIndex} LIMIT #{perPage};
+    </select>
+
+    <!--
+    작성자 : 박민혁
+    작성일 : 2024.01.23
+    내용 :  총합 규칙 관리 정보 count
+    -->
+    <select id="selectManageRuleCount" parameterType="HashMap" resultType="int">
+        SELECT
+            count(*)
+        FROM
+            manage_rule
+        JOIN db_data ON db_data.user_id = manage_rule.user_id
+        JOIN schema_data ON db_data.dbms_id = schema_data.dbms_id
+        JOIN table_data ON schema_data.schema_id = table_data.schema_id
+        JOIN column_data ON table_data.table_id = column_data.table_id
+        LEFT JOIN domain_rule ON manage_rule.rule_id = domain_rule.rule_id
+        LEFT JOIN val_rule ON domain_rule.val_rule_id = val_rule.val_rule_id
+        LEFT JOIN code_rule ON domain_rule.code_id = code_rule.code_id
+        LEFT JOIN ref_rule ON manage_rule.rule_id = ref_rule.ref_rule_id
+        LEFT JOIN work_rule ON manage_rule.rule_id = work_rule.work_rule_id
+        LEFT JOIN dupl_rule ON manage_rule.rule_id = dupl_rule.dupl_rule_id
+        LEFT JOIN dqi ON dqi.dqi_id = val_rule.dqi_id
+            OR dqi.dqi_id = code_rule.dqi_id
+            OR dqi.dqi_id = ref_rule.dqi_id
+            OR dqi.dqi_id = work_rule.dqi_id
+            OR dqi.dqi_id = dupl_rule.dqi_id
+        WHERE
+        manage_rule.user_id = #{user_id}
+        AND schema_data.schema_yn = 'y'
+        <if test="dbms_name!='none'">
+                AND db_data.dbms_name LIKE CONCAT('%', #{dbms_name}, '%')
+            </if>
+            <if test="schema_name!='none'">
+                AND schema_data.schema_name LIKE CONCAT('%', #{schema_name}, '%')
+            </if>
+            <if test="table_nm!=''">
+                AND table_data.table_nm LIKE CONCAT('%', #{table_nm}, '%')
+            </if>
+            <if test="column_nm!=''">
+                AND column_data.column_nm LIKE CONCAT('%', #{column_nm}, '%')
+            </if>
+            <if test="column_nm_k!=''">
+                AND column_data.column_nm LIKE CONCAT('%', #{column_nm_k}, '%')
+            </if>
+            <if test="rule_type!='none'">
+                AND manage_rule.rule_type = #{rule_type}
+            </if>
+            <if test="dqi_nm != ''">
+                AND dqi.dqi_nm LIKE CONCAT('%', #{dqi_nm}, '%')
+            </if>
+            AND
+            ( column_data.column_id = domain_rule.column_id
+            OR column_data.column_id = ref_rule.child_col_id
+            OR column_data.column_id = work_rule.column_id
+            OR column_data.column_id = dupl_rule.column_id )
+    </select>
+
+    <!--
+        작성자 : 박민혁
+        작성일 : 2024.01.23
+        내용 :  총합 규칙 관리 정보 insert
+     -->
+    <insert id="insertManageRule" parameterType="HashMap">
+        INSERT INTO manage_rule
+        (
+            rule_id,
+            rule_type,
+            user_id
+        )
+        VALUES
+        (
+            #{rule_id},
+            #{rule_type},
+            #{user_id}
+        );
+    </insert>
+
+    <!--
+        작성자 : 박민혁
+        작성일 : 2024.02.01
+        내용 :  규칙 내용이 변동되었을 때 확인하기 위한 select
+     -->
+    <select id="selectManageId" parameterType="HashMap" resultType="HashMap">
+        SELECT
+            manage_rule_id
+        FROM
+            manage_rule
+        WHERE rule_id = #{rule_id}
+        AND user_id = #{user_id};
+    </select>
+
+    <!--
+        작성자 : 박민혁
+        작성일 : 2024.02.01
+        내용 :  총합 규칙 관리 정보 update
+     -->
+    <update id="updateManageRule" parameterType="HashMap">
+        UPDATE manage_rule
+        SET
+            rule_id = #{rule_id}
+        WHERE
+            manage_rule_id = #{manage_rule_id}
+            AND rule_type = #{rule_type}
+            AND user_id = #{user_id};
+    </update>
+
+    <!--
+        작성자 : 박민혁
+        작성일 : 2024.02.01
+        내용 :  총합 규칙 관리 정보 delete
+     -->
+    <delete id="deleteManageRule" parameterType="HashMap">
+        DELETE FROM manage_rule
+        WHERE
+            manage_rule_id = #{manage_rule_id}
+            AND user_id = #{user_id};
+    </delete>
+
+    <!--
+    작성자 : 박민혁
+    작성일 : 2024.02.08
+    내용 :  총합 규칙 관리 정보 룰 id 연동의 delete
+     -->
+    <delete id="deleteManageRuleId" parameterType="INT">
+        DELETE FROM manage_rule
+        WHERE
+            rule_id = #{rule_id}
+    </delete>
+
+    <!--
+        작성자 : 박민혁
+        작성일 : 2024.02.01
+        내용 :  DB에 연동된 총합 규칙 관리 정보 모두 delete
+     -->
+    <delete id="deleteManageRuleAll" >
+        DELETE FROM dq.manage_rule
+        WHERE rule_id IS NOT NULL
+          AND (
+                    rule_id NOT IN (SELECT rule_id FROM domain_rule WHERE rule_id IS NOT NULL)
+                AND rule_id NOT IN (SELECT ref_rule_id FROM ref_rule WHERE ref_rule_id IS NOT NULL)
+                AND rule_id NOT IN (SELECT work_rule_id FROM work_rule WHERE work_rule_id IS NOT NULL)
+                AND rule_id NOT IN (SELECT dupl_rule_id FROM dupl_rule WHERE dupl_rule_id IS NOT NULL)
+                );
+    </delete>
+
+</mapper>
